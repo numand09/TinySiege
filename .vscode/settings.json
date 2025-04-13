@@ -51,5 +51,5 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "RushToReputation.sln"
+    "dotnet.defaultSolution": "TinySiege_1.sln"
 }
