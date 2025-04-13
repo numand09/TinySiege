@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1606d83942d714155a854b4588f7c4ad, type: 3}
+  m_Name: Farmer
+  m_EditorClassIdentifier: 
+  unitName: Farmer
+  icon: {fileID: -2667091633501273892, guid: 68f473693d1a9fd49b65e08622509cac, type: 3}
+  prefab: {fileID: 8433442497021827222, guid: e75e1472edb3a4cc19a7cdfc9b8fe9cc, type: 3}
+  hp: 10
+  damage: 2
+  moveSpeed: 3
+  attackCooldown: 1

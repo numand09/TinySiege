@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ddf3d6a29cd7e40a4a6316ad16eeb5b8, type: 3}
+  m_Name: Barrack
+  m_EditorClassIdentifier: 
+  buildingName: Barrack
+  icon: {fileID: 21300000, guid: fa52e3da758444841a56b1843b07771b, type: 3}
+  prefab: {fileID: 7035330969516834326, guid: 3295f59c98913496395a4dc9e3ecdd97, type: 3}
+  ghostPrefab: {fileID: 7035330969516834326, guid: 3295f59c98913496395a4dc9e3ecdd97, type: 3}
+  maxHP: 100
+  trainableUnits:
+  - {fileID: 11400000, guid: 7a965b4b287424768936f8a21c5684ce, type: 2}
+  - {fileID: 11400000, guid: f4df016812be94506a1d2dad5763fa80, type: 2}
+  - {fileID: 11400000, guid: 8e3532f830c124203b0f67c8c626432f, type: 2}
+  backsideSprite: {fileID: 21300000, guid: e7d7043149f70694daf9692309d06117, type: 3}

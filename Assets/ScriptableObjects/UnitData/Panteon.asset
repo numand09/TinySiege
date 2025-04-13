@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1606d83942d714155a854b4588f7c4ad, type: 3}
+  m_Name: Panteon
+  m_EditorClassIdentifier: 
+  unitName: Panteon
+  icon: {fileID: 3614441353231146100, guid: 18c8478129805fc4887c37f87fcc0fa8, type: 3}
+  prefab: {fileID: 8433442497021827222, guid: df16cb9ff2baa4a8180bf36e7fc74f3d, type: 3}
+  hp: 10
+  damage: 10
+  moveSpeed: 2
+  attackCooldown: 1

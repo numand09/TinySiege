@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1606d83942d714155a854b4588f7c4ad, type: 3}
+  m_Name: Warrior
+  m_EditorClassIdentifier: 
+  unitName: Warrior
+  icon: {fileID: -4779484048471008627, guid: 22aab3cabfb131549860bdb9167951d0, type: 3}
+  prefab: {fileID: 8433442497021827222, guid: ccd8dc12284654a479db7d0126e81c8c, type: 3}
+  hp: 10
+  damage: 5
+  moveSpeed: 2.4
+  attackCooldown: 1
