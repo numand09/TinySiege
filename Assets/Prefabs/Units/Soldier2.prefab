@@ -263,6 +263,7 @@ MonoBehaviour:
   animator: {fileID: 0}
   combat: {fileID: 0}
   selection: {fileID: 0}
+  unitIndex: 0
 --- !u!61 &1903236689384652402
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -305,6 +306,9 @@ MonoBehaviour:
   groundLayerMask:
     serializedVersion: 2
     m_Bits: 256
+  soldierLayerMask:
+    serializedVersion: 2
+    m_Bits: 128
 --- !u!1 &8531568220072736082
 GameObject:
   m_ObjectHideFlags: 0

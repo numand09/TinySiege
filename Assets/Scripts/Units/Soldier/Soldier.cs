@@ -15,21 +15,21 @@ public class Soldier : MonoBehaviour
     [HideInInspector] public SoldierAnimator animator;
     [HideInInspector] public SoldierCombat combat;
     [HideInInspector] public SoldierSelection selection;
+    private bool StartCoroutineOnEnable = false;
 
+
+    public int unitIndex = 0;
     private void Awake()
     {
-        // Get references
         soldierRenderer = GetComponentInChildren<Renderer>();
         boardManager = FindObjectOfType<GameBoardManager>();
         animator = gameObject.GetComponentInChildren<SoldierAnimator>();
         
-        // Initialize components
         health = gameObject.AddComponent<SoldierHealth>();
         movement = gameObject.AddComponent<SoldierMovement>();
         combat = gameObject.AddComponent<SoldierCombat>();
         selection = gameObject.GetComponent<SoldierSelection>();
         
-        // Setup dependencies
         health.Initialize(this, data.hp, healthBar);
         movement.Initialize(this, boardManager);
         animator.Initialize(this);
@@ -39,7 +39,6 @@ public class Soldier : MonoBehaviour
 
     private void Update()
     {
-        // Handle selection input
         if (selection.isSelected && Input.GetMouseButtonDown(1))
         {
             HandleTargetSelection();
@@ -55,12 +54,10 @@ public class Soldier : MonoBehaviour
             BaseBuilding building = hit.collider.GetComponent<BaseBuilding>();
             if (building != null)
             {
-                // We clicked on a building - attack it
                 combat.SetTargetBuilding(building);
             }
             else
             {
-                // We clicked on something else - move there
                 combat.ClearTarget();
                 movement.MoveTo(hit.point);
             }
@@ -77,38 +74,32 @@ public class Soldier : MonoBehaviour
 
     public void ReInitialize()
 {
-    // Mark as respawning to prevent being targeted
     if (health != null)
     {
         health.StartRespawning();
     }
     
-    // Reset health
     if (health != null && data != null)
     {
         health.currentHP = data.hp;
         health.UpdateHealthBar();
     }
     
-    // Reset combat state
     if (combat != null)
     {
         combat.ClearTarget();
     }
     
-    // Reset movement
     if (movement != null)
     {
         movement.StopMovement();
     }
     
-    // Reset selection
     if (selection != null)
     {
         selection.Deselect();
     }
     
-    // Reset renderer material opacity
     Renderer[] renderers = GetComponentsInChildren<Renderer>();
     foreach (Renderer renderer in renderers)
     {
@@ -119,23 +110,17 @@ public class Soldier : MonoBehaviour
         }
     }
     
-    // Don't start the coroutine if the GameObject is inactive
-    // Instead, we'll finish respawning right away or set up a delayed method call after activation
     if (gameObject.activeInHierarchy)
     {
         StartCoroutine(FinishRespawningAfterDelay(0.5f));
     }
     else
     {
-        // Store that we need to finish respawning when activated
         StartCoroutineOnEnable = true;
     }
 }
 
-// Add this field to the Soldier class
-private bool StartCoroutineOnEnable = false;
 
-// Add this method to the Soldier class
 private void OnEnable()
 {
     if (StartCoroutineOnEnable)

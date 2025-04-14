@@ -7,15 +7,15 @@ public class SoldierMovement : MonoBehaviour
     private Soldier soldier;
     private GameBoardManager boardManager;
     private Pathfinder pathfinder;
-    
     private Vector3 lastPosition;
     private Vector3 lastTarget = Vector3.positiveInfinity;
     private bool isMoving = false;
     private float movementCheckTimer = 0f;
     private float movementCheckDelay = 0.2f;
     
+    private float targetOffsetRadius = 0.5f;
     public bool IsMoving => isMoving;
-
+    
     public void Initialize(Soldier soldierRef, GameBoardManager boardManagerRef)
     {
         soldier = soldierRef;
@@ -26,7 +26,6 @@ public class SoldierMovement : MonoBehaviour
 
     private void Update()
     {
-        // Check if we're moving
         if (isMoving)
         {
             movementCheckTimer += Time.deltaTime;
@@ -35,27 +34,26 @@ public class SoldierMovement : MonoBehaviour
                 movementCheckTimer = 0f;
                 if (Vector3.Distance(transform.position, lastPosition) < 0.01f)
                 {
-                    // We're not actually moving despite being in movement state
                     isMoving = false;
                     soldier.animator.PlayIdleAnimation();
                 }
                 else
                 {
-                    // We're still moving
                     soldier.animator.PlayMoveAnimation();
                     lastPosition = transform.position;
                 }
             }
         }
     }
-
+    
     public void MoveTo(Vector3 target)
     {
-        if (Vector3.Distance(target, lastTarget) < 0.1f) return;
-        lastTarget = target;
-    
-        var path = pathfinder.FindPath(transform.position, target, transform.position.z);
-    
+        Vector3 offsetTarget = CalculateTargetOffset(target, soldier.unitIndex);
+        
+        if (Vector3.Distance(offsetTarget, lastTarget) < 0.1f) return;
+        lastTarget = offsetTarget;
+        
+        var path = pathfinder.FindPath(transform.position, offsetTarget, transform.position.z);
         if (path != null && path.Count > 0)
         {
             StopAllCoroutines();
@@ -67,23 +65,34 @@ public class SoldierMovement : MonoBehaviour
             soldier.animator.PlayIdleAnimation();
         }
     }
-
+    
+    private Vector3 CalculateTargetOffset(Vector3 baseTarget, int unitIndex)
+    {
+        if (unitIndex == 0) return baseTarget;
+        
+        float angle = unitIndex * 137.5f;
+        float distance = Mathf.Sqrt(unitIndex) * (targetOffsetRadius / 3f);
+        
+        float x = Mathf.Cos(angle * Mathf.Deg2Rad) * distance;
+        float y = Mathf.Sin(angle * Mathf.Deg2Rad) * distance;
+        
+        return baseTarget + new Vector3(x, y, 0);
+    }
+    
     private IEnumerator FollowPath(List<Vector3> path)
     {
         isMoving = true;
         soldier.animator.PlayMoveAnimation();
-        
         foreach (var point in path)
         {
             while (Vector3.Distance(transform.position, point) > 0.1f)
             {
-                if (soldier.combat.IsAttacking && soldier.combat.TargetBuilding != null && 
+                if (soldier.combat.IsAttacking && soldier.combat.TargetBuilding != null &&
                     soldier.combat.CheckIfInAttackRange(soldier.combat.TargetBuilding))
                 {
                     isMoving = false;
                     yield break;
                 }
-                
                 transform.localScale = new Vector3(point.x > transform.position.x ? 1 : -1, 1, 1);
                 float moveSpeed = soldier.data.moveSpeed > 0 ? soldier.data.moveSpeed : 3f;
                 transform.position = Vector3.MoveTowards(transform.position, point, Time.deltaTime * moveSpeed);
@@ -93,7 +102,6 @@ public class SoldierMovement : MonoBehaviour
         
         isMoving = false;
         
-        // Check if we've reached our target for attacking
         if (soldier.combat.TargetBuilding != null)
         {
             bool inRange = soldier.combat.CheckIfInAttackRange(soldier.combat.TargetBuilding);
@@ -112,7 +120,7 @@ public class SoldierMovement : MonoBehaviour
             soldier.animator.PlayIdleAnimation();
         }
     }
-
+    
     public void StopMovement()
     {
         isMoving = false;
