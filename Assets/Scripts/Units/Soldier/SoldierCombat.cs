@@ -8,217 +8,156 @@ public class SoldierCombat : MonoBehaviour
     private CapsuleCollider2D attackRangeCollider;
     
     private BaseBuilding targetBuilding;
-    private float attackTimer = 0f;
-    private bool isAttacking = false;
+    private float attackTimer;
+    private bool isAttacking, isMovingToAttack;
     
-    private List<BaseBuilding> buildingsInRange = new List<BaseBuilding>();
+    private readonly List<BaseBuilding> buildingsInRange = new();
 
     public BaseBuilding TargetBuilding => targetBuilding;
     public bool IsAttacking => isAttacking;
+    public bool IsMovingToAttack => isMovingToAttack;
 
     public void Initialize(Soldier soldierRef)
     {
         soldier = soldierRef;
-        
-        // Setup attack range collider
         attackRangeCollider = GetComponent<CapsuleCollider2D>();
-        if (attackRangeCollider == null)
-        {
-            attackRangeCollider = gameObject.AddComponent<CapsuleCollider2D>();
-        }
         attackRangeCollider.isTrigger = true;
-        attackRangeCollider.size = new Vector2(1f, 0.3f);
+        attackRangeCollider.size = new Vector2(0.5f, 0.4f);
         attackRangeCollider.direction = CapsuleDirection2D.Horizontal;
-        
-        // Initialize buildings in range
         StartCoroutine(InitializeBuildingsInRange());
     }
 
     private void Update()
     {
-        if (targetBuilding != null)
+        if (targetBuilding == null) return;
+
+        if (targetBuilding.currentHP <= 0)
         {
-            // If we have a target building, check if it's still valid
-            if (targetBuilding.currentHP <= 0)
+            ClearTarget();
+            soldier.animator.PlayIdleAnimation();
+            return;
+        }
+
+        FaceTarget(targetBuilding.transform.position);
+
+        if (CheckIfInAttackRange(targetBuilding))
+        {
+            if (isAttacking || isMovingToAttack)
             {
-                targetBuilding = null;
-                isAttacking = false;
-                soldier.animator.PlayIdleAnimation();
-                return;
-            }
-            
-            // Check if we're in range
-            bool inRange = CheckIfInAttackRange(targetBuilding);
-                        
-            // Only attack if we're in range and in attacking state
-            if (isAttacking && inRange)
-            {
-                // Face the target
-                Vector3 direction = targetBuilding.transform.position - transform.position;
-                transform.localScale = new Vector3(direction.x > 0 ? 1 : -1, 1, 1);
-                
-                attackTimer += Time.deltaTime;
-                if (attackTimer >= soldier.data.attackCooldown)
-                {
-                    attackTimer = 0f;
-                    AttackBuilding(targetBuilding);
-                }
-            }
-            else if (!inRange && isAttacking)
-            {
-                // We're out of range, need to move closer
-                MoveToTarget(targetBuilding);
+                isMovingToAttack = false;
+                isAttacking = true;
+                soldier.movement.StopMovement();
+                soldier.animator.PlayAttackAnimation();
+                TryAttack();
             }
         }
+        else if (isAttacking)
+        {
+            TryAttack();
+        }
+    }
+
+    private void TryAttack()
+    {
+        attackTimer += Time.deltaTime;
+        if (attackTimer >= soldier.data.attackCooldown)
+        {
+            attackTimer = 0f;
+            AttackBuilding(targetBuilding);
+        }
+    }
+
+    private void FaceTarget(Vector3 targetPos)
+    {
+        Vector3 dir = targetPos - transform.position;
+        transform.localScale = new Vector3(dir.x > 0 ? 1 : -1, 1, 1);
     }
 
     private IEnumerator InitializeBuildingsInRange()
     {
-        // Wait a frame to ensure everything is initialized
         yield return null;
-        
-        // Find all colliders in our attack range using OverlapCapsule
-        Collider2D[] colliders = Physics2D.OverlapCapsuleAll(transform.position, attackRangeCollider.size, attackRangeCollider.direction, 0f);
-        
-        foreach (Collider2D col in colliders)
+        foreach (var col in Physics2D.OverlapCapsuleAll(transform.position, attackRangeCollider.size, attackRangeCollider.direction, 0f))
         {
             BaseBuilding building = col.GetComponent<BaseBuilding>();
-            if (building != null && !buildingsInRange.Contains(building))
-            {
+            if (building && !buildingsInRange.Contains(building))
                 buildingsInRange.Add(building);
-            }
         }
     }
 
     public bool CheckIfInAttackRange(BaseBuilding building)
     {
-        // Check the capsule for colliders
-        Collider2D[] colliders = Physics2D.OverlapCapsuleAll(transform.position, attackRangeCollider.size, attackRangeCollider.direction, 0f);
-        
-        foreach (Collider2D col in colliders)
-        {
-            if (col.gameObject == building.gameObject)
-            {
-                return true;
-            }
-        }
-        
+        foreach (var col in Physics2D.OverlapCapsuleAll(transform.position, attackRangeCollider.size, attackRangeCollider.direction, 0f))
+            if (col.gameObject == building.gameObject) return true;
+
         return false;
     }
 
     public void SetTargetBuilding(BaseBuilding building)
     {
         targetBuilding = building;
-        
-        // Check if already in range
-        if (CheckIfInAttackRange(building))
-        {
-            // We're already in range, start attacking
-            isAttacking = true;
-            soldier.movement.StopMovement();
-            soldier.animator.PlayAttackAnimation();
-            return;
-        }
-        
-        // We need to move closer
+        isMovingToAttack = true;
+        isAttacking = false;
         MoveToTarget(building);
     }
 
     public void ClearTarget()
     {
         targetBuilding = null;
-        isAttacking = false;
+        isAttacking = isMovingToAttack = false;
     }
 
     public void SetAttacking(bool attacking)
     {
         isAttacking = attacking;
+        if (attacking)
+        {
+            isMovingToAttack = false;
+            if (targetBuilding) FaceTarget(targetBuilding.transform.position);
+        }
     }
 
     private void MoveToTarget(BaseBuilding building)
     {
-        // Calculate a position within attack range of the building
-        Vector3 dirToBuilding = (transform.position - building.transform.position).normalized;
-        if (dirToBuilding.magnitude < 0.001f)
-        {
-            // If we're at the same position, pick a random direction
-            dirToBuilding = new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), 0).normalized;
-        }
-        
-        // Calculate slightly inside attack range to ensure we're in range
-        float moveToDistance = attackRangeCollider.size.x * 0.8f;
-        Vector3 targetPosition = building.transform.position + dirToBuilding * moveToDistance;
-        
-        // Move to that position
-        soldier.movement.MoveTo(targetPosition);
-        
-        // Start attacking when in range
-        if (targetBuilding == building) {
-            StartCoroutine(AttackWhenInRange());
-        }
+        Collider2D col = building.GetComponent<Collider2D>();
+        Vector3 targetPos = col ? col.ClosestPoint(transform.position) : building.transform.position;
+        soldier.movement.MoveTo(targetPos);
     }
 
-    private IEnumerator AttackWhenInRange()
+    private void AttackBuilding(BaseBuilding building)
     {
-        // Wait a small amount to allow movement to start
-        yield return new WaitForSeconds(0.2f);
-        
-        while (targetBuilding != null)
+        if (Vector3.Distance(transform.position, building.transform.position) <= 2f)
         {
-            // Check if we're in range
-            bool inRange = CheckIfInAttackRange(targetBuilding);
-            
-            if (inRange)
-            {
-                isAttacking = true;
-                soldier.movement.StopMovement();
-                soldier.animator.PlayAttackAnimation();
-                yield break;
-            }
-            
-            yield return new WaitForSeconds(0.2f);
+            soldier.animator.PlayAttackAnimation();
+            building.TakeDamage(soldier.data.damage);
+            if (building.currentHP <= 0) building.DestroyBuilding();
+        }
+        else
+        {
+            isAttacking = false;
+            isMovingToAttack = true;
+            MoveToTarget(building);
         }
     }
 
-private void AttackBuilding(BaseBuilding building)
-{
-    soldier.animator.PlayAttackAnimation();
-    building.TakeDamage(soldier.data.damage);
-
-    if (building.currentHP <= 0)
-    {
-        building.DestroyBuilding(); // Havuz sistemine geri döner
-    }
-}
-
-
-    // Track buildings in range
     private void OnTriggerEnter2D(Collider2D other)
     {
         BaseBuilding building = other.GetComponent<BaseBuilding>();
-        if (building != null)
+        if (!building) return;
+
+        if (!buildingsInRange.Contains(building)) buildingsInRange.Add(building);
+
+        if (building == targetBuilding && isMovingToAttack)
         {
-            if (!buildingsInRange.Contains(building))
-            {
-                buildingsInRange.Add(building);
-            }
-            
-            // Only attack if this building is our target and we've explicitly been ordered to attack
-            if (building == targetBuilding && isAttacking)
-            {
-                soldier.movement.StopMovement();
-                StopAllCoroutines(); // Stop any movement
-                soldier.animator.PlayAttackAnimation();
-            }
+            isAttacking = true;
+            isMovingToAttack = false;
+            soldier.movement.StopMovement();
+            soldier.animator.PlayAttackAnimation();
         }
     }
-    
+
     private void OnTriggerExit2D(Collider2D other)
     {
         BaseBuilding building = other.GetComponent<BaseBuilding>();
-        if (building != null && buildingsInRange.Contains(building))
-        {
-            buildingsInRange.Remove(building);
-        }
+        if (building) buildingsInRange.Remove(building);
     }
 }

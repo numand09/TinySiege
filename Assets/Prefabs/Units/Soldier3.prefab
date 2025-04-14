@@ -25,8 +25,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2365379472225670885}
   m_LocalRotation: {x: -0, y: -0, z: 0.7071068, w: 0.7071068}
-  m_LocalPosition: {x: 0, y: -0.045, z: 0}
-  m_LocalScale: {x: 0.29999998, y: 0.6, z: 1}
+  m_LocalPosition: {x: -0.0194, y: -0.1176, z: 0}
+  m_LocalScale: {x: 0.2, y: 0.2, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 8433442497021827210}
@@ -73,7 +73,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: -9095717837082945937, guid: 207ee8102dd4143d288186ef0be518ee, type: 3}
+  m_Sprite: {fileID: -2413806693520163455, guid: ebe73ca9363db456bacf42c025bb4847, type: 3}
   m_Color: {r: 0.7137255, g: 0.33333334, b: 0.33333334, a: 0.19607843}
   m_FlipX: 0
   m_FlipY: 0
@@ -303,6 +303,7 @@ GameObject:
   - component: {fileID: 3106714284718909818}
   - component: {fileID: 5945881933559969513}
   - component: {fileID: 3184591958402674136}
+  - component: {fileID: 9173976222119823231}
   m_Layer: 7
   m_Name: Soldier3
   m_TagString: Untagged
@@ -390,6 +391,19 @@ MonoBehaviour:
   groundLayerMask:
     serializedVersion: 2
     m_Bits: 256
-  soldierLayerMask:
-    serializedVersion: 2
-    m_Bits: 128
+--- !u!70 &9173976222119823231
+CapsuleCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8433442497021827222}
+  m_Enabled: 1
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_UsedByComposite: 0
+  m_Offset: {x: 0, y: 0}
+  m_Size: {x: 0.5, y: 0.4}
+  m_Direction: 1

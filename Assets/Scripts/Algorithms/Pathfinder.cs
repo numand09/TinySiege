@@ -5,65 +5,106 @@ using UnityEngine;
 public class Pathfinder
 {
     private GameBoardManager boardManager;
+    private int maxPathfindingIterations = 5000; // Prevent infinite loops
 
     public Pathfinder(GameBoardManager boardManager)
     {
         this.boardManager = boardManager;
     }
 
-private bool IsPathClear(Vector3 start, Vector3 end)
-{
-    RaycastHit2D hit = Physics2D.Raycast(start, end - start, Vector2.Distance(start, end), 1 << LayerMask.NameToLayer("Building"));
-    return hit.collider == null;
-}
-
-public List<Vector3> FindPath(Vector3 start, Vector3 target, float z = 0f)
-{
-    var startGrid = boardManager.WorldToGridPosition(start);
-    var targetGrid = boardManager.WorldToGridPosition(target);
-
-    if (!IsInBounds(startGrid) || !IsInBounds(targetGrid)) return null;
-
-    ResetAllNodes();
-    if (!boardManager.nodeGrid[targetGrid.x, targetGrid.y].IsWalkable)
-        targetGrid = FindNearestWalkableNode(startGrid, targetGrid);
-
-    var startNode = boardManager.nodeGrid[startGrid.x, startGrid.y];
-    var targetNode = boardManager.nodeGrid[targetGrid.x, targetGrid.y];
-    if (!targetNode.IsWalkable) return null;
-
-    var openSet = new List<Node> { startNode };
-    var closedSet = new HashSet<Node>();
-    startNode.GCost = 0;
-    startNode.HCost = GetDistance(startNode, targetNode);
-
-    while (openSet.Count > 0)
+    private bool IsPathClear(Vector3 start, Vector3 end)
     {
-        var current = openSet.OrderBy(n => n.FCost).ThenBy(n => n.HCost).First();
-        if (current == targetNode)
-            return RetraceWorldPath(startNode, targetNode, z);
+        RaycastHit2D hit = Physics2D.Raycast(start, end - start, Vector2.Distance(start, end), 1 << LayerMask.NameToLayer("Building"));
+        return hit.collider == null;
+    }
 
-        openSet.Remove(current);
-        closedSet.Add(current);
+    public List<Vector3> FindPath(Vector3 start, Vector3 target, float z = 0f)
+    {
+        var startGrid = boardManager.WorldToGridPosition(start);
+        var targetGrid = boardManager.WorldToGridPosition(target);
 
-        foreach (var neighbor in boardManager.GetNeighbors(current))
+        if (!IsInBounds(startGrid) || !IsInBounds(targetGrid)) return null;
+
+        ResetAllNodes();
+        if (!boardManager.nodeGrid[targetGrid.x, targetGrid.y].IsWalkable)
+            targetGrid = FindNearestWalkableNode(startGrid, targetGrid);
+
+        var startNode = boardManager.nodeGrid[startGrid.x, startGrid.y];
+        var targetNode = boardManager.nodeGrid[targetGrid.x, targetGrid.y];
+        if (!targetNode.IsWalkable) return null;
+
+        var openSet = new List<Node> { startNode };
+        var closedSet = new HashSet<Node>();
+        startNode.GCost = 0;
+        startNode.HCost = GetDistance(startNode, targetNode);
+
+        int iterations = 0;
+
+        while (openSet.Count > 0 && iterations < maxPathfindingIterations)
         {
-            if (!neighbor.IsWalkable || closedSet.Contains(neighbor) || !IsPathClear(boardManager.GridToWorldPosition(current.GridPosition.x, current.GridPosition.y), boardManager.GridToWorldPosition(neighbor.GridPosition.x, neighbor.GridPosition.y)))
-                continue;
+            iterations++;
+            
+            var current = openSet.OrderBy(n => n.FCost).ThenBy(n => n.HCost).First();
+            if (current == targetNode)
+                return RetraceWorldPath(startNode, targetNode, z);
 
-            int tentativeG = current.GCost + GetDistance(current, neighbor);
-            if (tentativeG < neighbor.GCost || !openSet.Contains(neighbor))
+            openSet.Remove(current);
+            closedSet.Add(current);
+
+            foreach (var neighbor in boardManager.GetNeighbors(current))
             {
-                neighbor.GCost = tentativeG;
-                neighbor.HCost = GetDistance(neighbor, targetNode);
-                neighbor.Parent = current;
-                if (!openSet.Contains(neighbor)) openSet.Add(neighbor);
+                if (!neighbor.IsWalkable || closedSet.Contains(neighbor) || !IsPathClear(boardManager.GridToWorldPosition(current.GridPosition.x, current.GridPosition.y), boardManager.GridToWorldPosition(neighbor.GridPosition.x, neighbor.GridPosition.y)))
+                    continue;
+
+                int tentativeG = current.GCost + GetDistance(current, neighbor);
+                if (tentativeG < neighbor.GCost || !openSet.Contains(neighbor))
+                {
+                    neighbor.GCost = tentativeG;
+                    neighbor.HCost = GetDistance(neighbor, targetNode);
+                    neighbor.Parent = current;
+                    if (!openSet.Contains(neighbor)) openSet.Add(neighbor);
+                }
             }
         }
-    }
-    return null;
-}
 
+
+        if (IsTargetNearBuilding(target))
+        {
+            Node bestNode = FindBestNodeForPartialPath(closedSet, targetNode);
+            if (bestNode != null && bestNode != startNode)
+            {
+                return RetraceWorldPath(startNode, bestNode, z);
+            }
+        }
+
+        return null;
+    }
+
+    private bool IsTargetNearBuilding(Vector3 target)
+    {
+        Collider2D[] colliders = Physics2D.OverlapCircleAll(target, 2.0f, 1 << LayerMask.NameToLayer("Building"));
+        return colliders.Length > 0;
+    }
+
+    private Node FindBestNodeForPartialPath(HashSet<Node> closedSet, Node targetNode)
+    {
+        if (closedSet.Count == 0) return null;
+
+        Node bestNode = null;
+        int bestDistance = int.MaxValue;
+
+        foreach (var node in closedSet)
+        {
+            int distance = GetDistance(node, targetNode);
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                bestNode = node;
+            }
+        }
+
+        return bestNode;
+    }
 
     private void ResetAllNodes()
     {
@@ -81,14 +122,19 @@ public List<Vector3> FindPath(Vector3 start, Vector3 target, float z = 0f)
     private Vector2Int FindNearestWalkableNode(Vector2Int from, Vector2Int around)
     {
         List<Vector2Int> candidates = new();
-        for (int r = 1; r <= 5; r++)
+        
+        for (int r = 1; r <= 7; r++)
         {
             for (int x = around.x - r; x <= around.x + r; x++)
                 for (int y = around.y - r; y <= around.y + r; y++)
                     if ((Mathf.Abs(x - around.x) == r || Mathf.Abs(y - around.y) == r) &&
                         IsInBounds(new(x, y)) && boardManager.nodeGrid[x, y].IsWalkable)
                         candidates.Add(new(x, y));
+            
+            if (candidates.Count > 0)
+                break;
         }
+        
         return candidates.Count == 0 ? around : candidates.OrderBy(c => Vector2Int.Distance(from, c)).First();
     }
 

@@ -1480,7 +1480,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   prefab: {fileID: 3865156771281967183, guid: 850ceda08db47425994624fda533f0ac, type: 3}
-  initialPoolSize: 5
+  initialPoolSize: 10
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0
@@ -4566,8 +4566,8 @@ MonoBehaviour:
   productionMenuToggleButton: {fileID: 1793917176}
   infoPanelToggleButton: {fileID: 1586895400}
   gotoMenuToggleButton: {fileID: 956725845}
-  buildingItemPool: {fileID: 0}
-  circularScrollView: {fileID: 0}
+  buildingItemPool: {fileID: 613670630}
+  circularScrollView: {fileID: 325195234}
   soundButton: {fileID: 1151540330}
   soundOnSprite: {fileID: 21300000, guid: bda0ae43f4b7b57409796b458ca3b1f4, type: 3}
   soundOffSprite: {fileID: 21300000, guid: 22e0a0ac78ebe6a4a9b28cf174830f3e, type: 3}
