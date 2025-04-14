@@ -218,6 +218,7 @@ GameObject:
   - component: {fileID: 8433442497021827210}
   - component: {fileID: 8252216848851867091}
   - component: {fileID: 1903236689384652402}
+  - component: {fileID: 3504070185497465967}
   m_Layer: 7
   m_Name: Soldier2
   m_TagString: Untagged
@@ -288,6 +289,22 @@ BoxCollider2D:
   serializedVersion: 2
   m_Size: {x: 0.32, y: 0.32}
   m_EdgeRadius: 0
+--- !u!114 &3504070185497465967
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8433442497021827222}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 09dcb1681eff3425694679edc33cb56f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  isSelected: 0
+  groundLayerMask:
+    serializedVersion: 2
+    m_Bits: 256
 --- !u!1 &8531568220072736082
 GameObject:
   m_ObjectHideFlags: 0

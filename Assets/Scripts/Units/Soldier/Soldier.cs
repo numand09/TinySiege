@@ -27,7 +27,7 @@ public class Soldier : MonoBehaviour
         health = gameObject.AddComponent<SoldierHealth>();
         movement = gameObject.AddComponent<SoldierMovement>();
         combat = gameObject.AddComponent<SoldierCombat>();
-        selection = gameObject.AddComponent<SoldierSelection>();
+        selection = gameObject.GetComponent<SoldierSelection>();
         
         // Setup dependencies
         health.Initialize(this, data.hp, healthBar);

@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1323078955245935566}
   - component: {fileID: 7354603652408789250}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Cell
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -69,7 +69,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3175413309707163431}
   - component: {fileID: 8289718412957385574}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: spriteholder
   m_TagString: Untagged
   m_Icon: {fileID: 0}
