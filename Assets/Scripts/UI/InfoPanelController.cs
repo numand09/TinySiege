@@ -33,6 +33,12 @@ public class InfoPanelController : MonoBehaviour
             toggleModeButton.onClick.AddListener(ToggleBuildingMode);
             toggleModeButton.gameObject.SetActive(false);
         }
+        
+        // Subscribe to the UnitFactory's spawn area blocked event
+        if (UnitFactory.Instance != null)
+        {
+            UnitFactory.Instance.OnSpawnAreaBlocked += OnSpawnAreaBlocked;
+        }
     }
 
     private void OnEnable()
@@ -45,6 +51,12 @@ public class InfoPanelController : MonoBehaviour
         
         if (selectedBuilding == null)
             ClearSelectionUI();
+            
+        // Make sure we're subscribed to the spawn area blocked event
+        if (UnitFactory.Instance != null)
+        {
+            UnitFactory.Instance.OnSpawnAreaBlocked += OnSpawnAreaBlocked;
+        }
     }
 
     private void OnDisable()
@@ -53,6 +65,21 @@ public class InfoPanelController : MonoBehaviour
         {
             UIEventDispatcher.Instance.UnregisterBuildingClickListener(OnBuildingSelected);
             UIEventDispatcher.Instance.OnBuildingModeChanged -= OnBuildingModeChanged;
+        }
+        
+        // Unsubscribe from the spawn area blocked event
+        if (UnitFactory.Instance != null)
+        {
+            UnitFactory.Instance.OnSpawnAreaBlocked -= OnSpawnAreaBlocked;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        // Make sure we unsubscribe when the object is destroyed
+        if (UnitFactory.Instance != null)
+        {
+            UnitFactory.Instance.OnSpawnAreaBlocked -= OnSpawnAreaBlocked;
         }
     }
 
@@ -175,22 +202,24 @@ public class InfoPanelController : MonoBehaviour
     {
         Vector3 spawnPos = barrack.ActiveSpawnPoint.position;
         
-        if (IsSpawnAreaClear(spawnPos, unitData))
-        {
-            UnitFactory.Instance.SpawnUnit(unitData, spawnPos);
-        }
-        else
-        {
-            if (spawnStatusText != null)
-            {
-                spawnStatusText.gameObject.SetActive(true);
-                spawnStatusText.text = "Cannot spawn unit, area blocked. maybe you can try another way";
-                
-                StartCoroutine(HideStatusTextAfterDelay(2f));
-            }
-            }
+        // We don't need to check here anymore as UnitFactory will handle this
+        // and notify us through the event if there's a problem
+        UnitFactory.Instance.SpawnUnit(unitData, spawnPos);
     }
     
+    // This method is triggered when UnitFactory can't find a safe spawn position
+    private void OnSpawnAreaBlocked()
+    {
+        if (spawnStatusText != null)
+        {
+            spawnStatusText.gameObject.SetActive(true);
+            spawnStatusText.text = "Cannot spawn unit. All nearby areas are blocked. Try using the other side of the building or clear some space.";
+            
+            StartCoroutine(HideStatusTextAfterDelay(3f));
+        }
+    }
+    
+    // We can keep this method as a fallback, but it's not used anymore
     private bool IsSpawnAreaClear(Vector3 position, UnitData unitData)
     {
         float checkRadius = 0.1f;

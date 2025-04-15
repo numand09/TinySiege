@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System;
 
 public class UnitFactory : MonoBehaviour
 {
@@ -8,6 +9,11 @@ public class UnitFactory : MonoBehaviour
     private float offsetRadius = 0.3f;
     private float minBuildingDistance = 0.3f;
     private int maxPositionAttempts = 8;
+    
+    [SerializeField] private LayerMask buildingsLayerMask;
+    
+    // Event to notify UI when spawn area is blocked
+    public event Action OnSpawnAreaBlocked;
     
     private void Awake()
     {
@@ -24,13 +30,20 @@ public class UnitFactory : MonoBehaviour
             
         int spawnCount = spawnCounters[unitData.unitName]++;
         
-        Vector3 safePosition = FindSafeSpawnPosition(spawnPosition, spawnCount, unitData.unitName);
+        Vector3? safePosition = FindSafeSpawnPosition(spawnPosition, spawnCount, unitData.unitName);
+        
+        // If no safe position found, trigger the event and return
+        if (!safePosition.HasValue)
+        {
+            OnSpawnAreaBlocked?.Invoke();
+            return;
+        }
         
         GameObject unit;
         if (UnitPool.Instance != null)
         {
             unit = UnitPool.Instance.GetUnit(unitData.prefab, unitData.unitName);
-            unit.transform.position = safePosition;
+            unit.transform.position = safePosition.Value;
             Soldier soldier = unit.GetComponent<Soldier>();
             if (soldier != null)
             {
@@ -51,7 +64,7 @@ public class UnitFactory : MonoBehaviour
         }
         else
         {
-            unit = Instantiate(unitData.prefab, safePosition, Quaternion.identity);
+            unit = Instantiate(unitData.prefab, safePosition.Value, Quaternion.identity);
             Soldier soldier = unit.GetComponent<Soldier>();
             if (soldier != null)
             {
@@ -61,7 +74,7 @@ public class UnitFactory : MonoBehaviour
         }
     }
     
-    private Vector3 FindSafeSpawnPosition(Vector3 basePosition, int index, string unitType)
+    private Vector3? FindSafeSpawnPosition(Vector3 basePosition, int index, string unitType)
     {
         Vector3 offsetPosition = CalculateOffset(basePosition, index, unitType);
         
@@ -71,9 +84,13 @@ public class UnitFactory : MonoBehaviour
         float stepAngle = 360f / maxPositionAttempts;
         float currentRadius = offsetRadius;
         
-        for (int attempt = 0; attempt < maxPositionAttempts; attempt++)
+        // Increase the maximum attempts to find a safe position
+        int increasedMaxAttempts = maxPositionAttempts * 3;
+        
+        for (int attempt = 0; attempt < increasedMaxAttempts; attempt++)
         {
-            currentRadius += 0.1f;
+            // Increase radius more gradually to try more positions
+            currentRadius += 0.2f;
             
             float angle = (index * 137.5f) + (attempt * stepAngle);
             
@@ -90,20 +107,48 @@ public class UnitFactory : MonoBehaviour
                 return testPosition;
         }
         
-        return basePosition + new Vector3(
-            Random.Range(-0.8f, 0.8f), 
-            Random.Range(-0.8f, 0.8f), 
-            0
-        );
+        // Try a few random positions as a last resort
+        for (int i = 0; i < 5; i++)
+        {
+            Vector3 randomPosition = basePosition + new Vector3(
+                UnityEngine.Random.Range(-2f, 2f), 
+                UnityEngine.Random.Range(-2f, 2f), 
+                0
+            );
+            
+            if (IsSafePosition(randomPosition))
+                return randomPosition;
+        }
+        
+        // If no safe position found at all, return null
+        return null;
     }
     
     private bool IsSafePosition(Vector3 position)
     {
-        Collider2D[] colliders = Physics2D.OverlapCircleAll(position, minBuildingDistance);
+        // Check for objects in the Buildings layer within a 2 unit radius
+        float checkRadius = 2f;
+        Collider2D[] colliders = Physics2D.OverlapCircleAll(position, checkRadius, buildingsLayerMask);
         
         foreach (Collider2D collider in colliders)
         {
-            if (collider.GetComponent<BaseBuilding>() != null)
+            // Calculate the actual distance between the position and the collider's position
+            float distance = Vector2.Distance(position, collider.transform.position);
+            
+            // Get the bounds of the collider to determine a safe distance
+            float minSafeDistance = minBuildingDistance;
+            
+            // If collider has a size, use that to determine a more accurate safe distance
+            BoxCollider2D boxCollider = collider.GetComponent<BoxCollider2D>();
+            if (boxCollider != null)
+            {
+                // Use the max dimension of the collider plus our minimum distance
+                float maxDimension = Mathf.Max(boxCollider.size.x, boxCollider.size.y) / 2f;
+                minSafeDistance = maxDimension + minBuildingDistance;
+            }
+            
+            // If any object in the Buildings layer is too close, this is not a safe position
+            if (distance < minSafeDistance)
             {
                 return false;
             }
@@ -116,7 +161,7 @@ public class UnitFactory : MonoBehaviour
     {
         if (index == 0) return basePosition;
         
-        float angle = index * 137.5f; // Altın açı
+        float angle = index * 137.5f;
         float distance = Mathf.Sqrt(index) * (offsetRadius / 2f);
         
         int typeOffset = 0;
