@@ -6,6 +6,8 @@ public class UnitFactory : MonoBehaviour
 {
     public static UnitFactory Instance { get; private set; }
     private Dictionary<string, int> spawnCounters = new Dictionary<string, int>();
+    private Dictionary<string, Material> sharedMaterials = new Dictionary<string, Material>();
+
     private float offsetRadius = 0.3f;
     private float minBuildingDistance = 0.3f;
     private int maxPositionAttempts = 8;
@@ -24,55 +26,57 @@ public class UnitFactory : MonoBehaviour
     }
     
     public void SpawnUnit(UnitData unitData, Vector3 spawnPosition)
+{
+    if (!spawnCounters.ContainsKey(unitData.unitName))
+        spawnCounters[unitData.unitName] = 0;
+        
+    int spawnCount = spawnCounters[unitData.unitName]++;
+    
+    Vector3? safePosition = FindSafeSpawnPosition(spawnPosition, spawnCount, unitData.unitName);
+    
+    // If no safe position found, trigger the event and return
+    if (!safePosition.HasValue)
     {
-        if (!spawnCounters.ContainsKey(unitData.unitName))
-            spawnCounters[unitData.unitName] = 0;
+        OnSpawnAreaBlocked?.Invoke();
+        return;
+    }
+    
+    GameObject unit;
+    
+    // Always try to use the object pool
+    if (UnitPool.Instance != null)
+    {
+        unit = UnitPool.Instance.GetUnit(unitData.prefab, unitData.unitName);
+        unit.transform.position = safePosition.Value;
+        Soldier soldier = unit.GetComponent<Soldier>();
+        if (soldier != null)
+        {
+            soldier.data = unitData;
+            if (soldier.health != null)
+            {
+                soldier.health.currentHP = unitData.hp;
+                soldier.health.UpdateHealthBar();
+            }
+            soldier.unitIndex = spawnCount;
             
-        int spawnCount = spawnCounters[unitData.unitName]++;
-        
-        Vector3? safePosition = FindSafeSpawnPosition(spawnPosition, spawnCount, unitData.unitName);
-        
-        // If no safe position found, trigger the event and return
-        if (!safePosition.HasValue)
-        {
-            OnSpawnAreaBlocked?.Invoke();
-            return;
-        }
-        
-        GameObject unit;
-        if (UnitPool.Instance != null)
-        {
-            unit = UnitPool.Instance.GetUnit(unitData.prefab, unitData.unitName);
-            unit.transform.position = safePosition.Value;
-            Soldier soldier = unit.GetComponent<Soldier>();
-            if (soldier != null)
-            {
-                soldier.data = unitData;
-                if (soldier.health != null)
-                {
-                    soldier.health.currentHP = unitData.hp;
-                    soldier.health.UpdateHealthBar();
-                }
-                soldier.unitIndex = spawnCount;
-                Renderer soldierRenderer = unit.GetComponentInChildren<Renderer>();
-                if (soldierRenderer != null)
-                {
-                    Color currentColor = soldierRenderer.material.color;
-                    soldierRenderer.material.color = new Color(currentColor.r, currentColor.g, currentColor.b, 1f);
-                }
-            }
-        }
-        else
-        {
-            unit = Instantiate(unitData.prefab, safePosition.Value, Quaternion.identity);
-            Soldier soldier = unit.GetComponent<Soldier>();
-            if (soldier != null)
-            {
-                soldier.data = unitData;
-                soldier.unitIndex = spawnCount;
-            }
+            // Ensure material sharing for batching
+            EnsureSharedMaterial(unit, unitData.unitName);
         }
     }
+    else
+    {
+        // Fallback to instantiation (try to avoid this path)
+        unit = Instantiate(unitData.prefab, safePosition.Value, Quaternion.identity);
+        Soldier soldier = unit.GetComponent<Soldier>();
+        if (soldier != null)
+        {
+            soldier.data = unitData;
+            soldier.unitIndex = spawnCount;
+            // Ensure material sharing for batching
+            EnsureSharedMaterial(unit, unitData.unitName);
+        }
+    }
+}
     
     private Vector3? FindSafeSpawnPosition(Vector3 basePosition, int index, string unitType)
     {
@@ -174,4 +178,16 @@ public class UnitFactory : MonoBehaviour
         
         return basePosition + new Vector3(x, y, 0);
     }
+
+private void EnsureSharedMaterial(GameObject unit, string unitType)
+{
+    Renderer renderer = unit.GetComponentInChildren<Renderer>();
+    if (renderer != null)
+    {
+        if (!sharedMaterials.ContainsKey(unitType))
+            sharedMaterials[unitType] = renderer.material;
+        else
+            renderer.material = sharedMaterials[unitType];
+    }
+}
 }

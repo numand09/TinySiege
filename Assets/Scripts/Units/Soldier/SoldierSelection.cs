@@ -10,27 +10,39 @@ public class SoldierSelection : MonoBehaviour
     private GameObject rangeIndicator;
     public bool isSelected = false;
     public LayerMask groundLayerMask;
+    
     private static List<SoldierSelection> allSelectedSoldiers = new List<SoldierSelection>();
     
-    // Drag selection variables
+    private static List<SoldierSelection> allSoldiers = new List<SoldierSelection>();
+    
     private static Vector2 dragStartPosition;
     private static bool isDragging = false;
     private static GameObject selectionBox;
+    
+    private void OnEnable()
+    {
+        if (!allSoldiers.Contains(this))
+            allSoldiers.Add(this);
+    }
+    
+    private void OnDisable()
+    {
+        allSoldiers.Remove(this);
+        if (isSelected)
+            allSelectedSoldiers.Remove(this);
+    }
     
     public void Initialize(Soldier soldierRef, Renderer rendererRef)
     {
         soldier = soldierRef;
         soldierRenderer = rendererRef;
         rangeIndicator = soldier.transform.Find("Range")?.gameObject;
+        
         if (rangeIndicator != null)
-        {
             rangeIndicator.SetActive(false);
-        }
         
         if (selectionBox == null)
-        {
             selectionBox = CreateSelectionBox();
-        }
     }
     
     void Update()
@@ -65,9 +77,7 @@ public class SoldierSelection : MonoBehaviour
                         if (clickedSoldier == null)
                         {
                             if ((groundLayerMask.value & (1 << hit.collider.gameObject.layer)) != 0)
-                            {
                                 DeselectAllSoldiers();
-                            }
                         }
                     }
                     else
@@ -113,7 +123,6 @@ public class SoldierSelection : MonoBehaviour
             Mathf.Abs(currentPos.y - startPos.y)
         );
         
-        // Update selection box transform
         selectionBox.transform.position = center;
         selectionBox.transform.localScale = size;
     }
@@ -121,9 +130,7 @@ public class SoldierSelection : MonoBehaviour
     private static void SelectSoldiersInRectangle(Vector2 startPos, Vector2 endPos)
     {
         if (!Input.GetKey(KeyCode.LeftShift) && !Input.GetKey(KeyCode.RightShift))
-        {
             DeselectAllSoldiers();
-        }
         
         Rect selectionRect = new Rect(
             Mathf.Min(startPos.x, endPos.x),
@@ -132,37 +139,27 @@ public class SoldierSelection : MonoBehaviour
             Mathf.Abs(endPos.y - startPos.y)
         );
         
-        SoldierSelection[] allSoldiers = GameObject.FindObjectsOfType<SoldierSelection>();
-        
         foreach (SoldierSelection soldier in allSoldiers)
         {
             Vector2 soldierPosition = soldier.transform.position;
             
-            if (selectionRect.Contains(soldierPosition))
-            {
-                if (!soldier.isSelected)
-                {
-                    soldier.ToggleSelection();
-                }
-            }
+            if (selectionRect.Contains(soldierPosition) && !soldier.isSelected)
+                soldier.ToggleSelection();
         }
-        
     }
     
     public void ToggleSelection()
     {
         isSelected = !isSelected;
-        soldierRenderer.material.color = isSelected ? Color.yellow : Color.white;
+        
+        // Sadece Range göstergesini kullan
         if (rangeIndicator != null)
-        {
             rangeIndicator.SetActive(isSelected);
-        }
+        
         if (isSelected)
         {
             if (!allSelectedSoldiers.Contains(this))
-            {
                 allSelectedSoldiers.Add(this);
-            }
         }
         else
         {
@@ -174,12 +171,11 @@ public class SoldierSelection : MonoBehaviour
     {
         if (isSelected)
         {
-            soldierRenderer.material.color = Color.white;
             isSelected = false;
+            
             if (rangeIndicator != null)
-            {
                 rangeIndicator.SetActive(false);
-            }
+            
             allSelectedSoldiers.Remove(this);
         }
     }
@@ -188,18 +184,13 @@ public class SoldierSelection : MonoBehaviour
     {
         List<SoldierSelection> selectedSoldiersCopy = new List<SoldierSelection>(allSelectedSoldiers);
         foreach (var soldier in selectedSoldiersCopy)
-        {
             soldier.Deselect();
-        }
+        
         allSelectedSoldiers.Clear();
     }
     
     private bool IsPointerOverUI()
     {
-        bool result = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
-        if (result)
-        {
-        }
-        return result;
+        return EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
     }
 }
