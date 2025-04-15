@@ -9,9 +9,10 @@ public class SoldierMovement : MonoBehaviour
     private Pathfinder pathfinder;
     private Vector3 lastTarget = Vector3.positiveInfinity;
     private Vector3 lastPosition;
-    private float movementCheckTimer, stuckCheckTimer;
+    private float movementCheckTimer, stuckCheckTimer, targetTrackTimer;
     private bool isMoving = false, isRetryingPath = false;
     private const float movementCheckDelay = 0.2f, stuckThreshold = 1f, targetOffsetRadius = 0.5f;
+    private const float targetTrackDelay = 0.5f;
 
     public bool IsMoving => isMoving;
 
@@ -29,9 +30,18 @@ public class SoldierMovement : MonoBehaviour
 
         movementCheckTimer += Time.deltaTime;
         stuckCheckTimer += Time.deltaTime;
+        targetTrackTimer += Time.deltaTime;
 
         if (movementCheckTimer < movementCheckDelay) return;
         movementCheckTimer = 0f;
+        if (soldier.combat.TargetSoldier != null && targetTrackTimer >= targetTrackDelay)
+        {
+            targetTrackTimer = 0f;
+            if (Vector3.Distance(transform.position, soldier.combat.TargetSoldier.transform.position) > 1.5f)
+            {
+                MoveTo(soldier.combat.TargetSoldier.transform.position);
+            }
+        }
 
         if (Vector3.Distance(transform.position, lastPosition) < 0.01f)
         {
@@ -54,9 +64,27 @@ public class SoldierMovement : MonoBehaviour
     {
         bool isBuildingTarget = soldier.combat.TargetBuilding && 
                                 Vector3.Distance(target, soldier.combat.TargetBuilding.transform.position) < 1f;
+                                
+        bool isSoldierTarget = soldier.combat.TargetSoldier && 
+                               Vector3.Distance(target, soldier.combat.TargetSoldier.transform.position) < 1f;
 
-        Vector3 finalTarget = isBuildingTarget ? target : CalculateOffset(target, soldier.unitIndex);
-        if (Vector3.Distance(finalTarget, lastTarget) < 0.1f) return;
+        Vector3 finalTarget;
+        
+        if (isSoldierTarget)
+        {
+            // For soldiers, we want to get closer than with buildings
+            finalTarget = target;
+        }
+        else if (isBuildingTarget)
+        {
+            finalTarget = target;
+        }
+        else
+        {
+            finalTarget = CalculateOffset(target, soldier.unitIndex);
+        }
+        
+        if (Vector3.Distance(finalTarget, lastTarget) < 0.1f && !isSoldierTarget) return;
 
         lastTarget = finalTarget;
         var path = pathfinder.FindPath(transform.position, finalTarget, transform.position.z);
@@ -64,11 +92,24 @@ public class SoldierMovement : MonoBehaviour
         if (path != null && path.Count > 0)
         {
             StopAllCoroutines();
-            StartCoroutine(FollowPath(path, soldier.combat.TargetBuilding));
+            if (isSoldierTarget)
+            {
+                StartCoroutine(FollowPath(path, null, soldier.combat.TargetSoldier));
+            }
+            else
+            {
+                StartCoroutine(FollowPath(path, soldier.combat.TargetBuilding));
+            }
         }
         else if (isBuildingTarget)
         {
             TryAlternativePath(soldier.combat.TargetBuilding);
+        }
+        else if (isSoldierTarget)
+        {
+            isMoving = true;
+            stuckCheckTimer = 0f;
+            targetTrackTimer = targetTrackDelay; 
         }
         else
         {
@@ -77,19 +118,31 @@ public class SoldierMovement : MonoBehaviour
         }
     }
 
-    private IEnumerator FollowPath(List<Vector3> path, BaseBuilding targetBuilding = null)
+    private IEnumerator FollowPath(List<Vector3> path, BaseBuilding targetBuilding = null, Soldier targetSoldier = null)
     {
         isMoving = true;
         stuckCheckTimer = 0f;
+        targetTrackTimer = 0f;
         soldier.animator.PlayMoveAnimation();
 
-        float initialDist = targetBuilding ? Vector3.Distance(transform.position, targetBuilding.transform.position) : 0f;
+        float initialDist = 0f;
+        if (targetBuilding != null)
+            initialDist = Vector3.Distance(transform.position, targetBuilding.transform.position);
+        else if (targetSoldier != null)
+            initialDist = Vector3.Distance(transform.position, targetSoldier.transform.position);
 
         foreach (var point in path)
         {
             while (Vector3.Distance(transform.position, point) > 0.1f)
             {
                 if (CheckAttackInterrupt()) yield break;
+
+                // catch the target
+                if (targetSoldier != null && Vector3.Distance(targetSoldier.transform.position, lastTarget) > 1.0f)
+                {
+                    MoveTo(targetSoldier.transform.position);
+                    yield break;
+                }
 
                 transform.localScale = new Vector3(point.x > transform.position.x ? 1 : -1, 1, 1);
                 float speed = soldier.data.moveSpeed > 0 ? soldier.data.moveSpeed : 3f;
@@ -105,63 +158,122 @@ public class SoldierMovement : MonoBehaviour
                         yield break;
                     }
                 }
+                else if (targetSoldier && soldier.combat.IsMovingToAttack)
+                {
+                    float dist = Vector3.Distance(transform.position, targetSoldier.transform.position);
+                    if (dist <= soldier.combat.soldierAttackRange)
+                    {
+                        SetAttack();
+                        yield break;
+                    }
+                }
 
                 yield return null;
             }
         }
 
         isMoving = false;
-        FinalizeMove(targetBuilding);
+        FinalizeMove(targetBuilding, targetSoldier);
     }
 
-    private void FinalizeMove(BaseBuilding targetBuilding)
+    private void FinalizeMove(BaseBuilding targetBuilding, Soldier targetSoldier = null)
     {
-        if (!targetBuilding)
+        if (targetBuilding == null && targetSoldier == null)
         {
             soldier.animator.PlayIdleAnimation();
             return;
         }
 
-        if (soldier.combat.IsMovingToAttack)
+        if (targetBuilding != null)
         {
-            float dist = Vector3.Distance(transform.position, targetBuilding.transform.position);
+            if (soldier.combat.IsMovingToAttack)
+            {
+                float dist = Vector3.Distance(transform.position, targetBuilding.transform.position);
+                if (dist <= 3f)
+                {
+                    SetAttack();
+                }
+                else
+                {
+                    TryAlternativePath(targetBuilding);
+                }
+            }
+            else
+            {
+                if (soldier.combat.CheckIfInAttackRange(targetBuilding))
+                    SetAttack();
+                else
+                    soldier.animator.PlayIdleAnimation();
+            }
+        }
+        else if (targetSoldier != null)
+        {
+            if (soldier.combat.IsMovingToAttack)
+            {
+                float dist = Vector3.Distance(transform.position, targetSoldier.transform.position);
+                if (dist <= soldier.combat.soldierAttackRange)
+                {
+                    SetAttack();
+                }
+                else
+                {
+                    MoveTo(targetSoldier.transform.position);
+                }
+            }
+            else
+            {
+                if (soldier.combat.CheckIfInAttackRange(targetSoldier))
+                    SetAttack();
+                else
+                    soldier.animator.PlayIdleAnimation();
+            }
+        }
+    }
+
+    private bool CheckAttackInterrupt()
+    {
+        //if we're attacking and not trying to move to attack
+        if (soldier.combat.IsAttacking && !soldier.combat.IsMovingToAttack)
+        {
+            if (soldier.combat.TargetBuilding && 
+                soldier.combat.CheckIfInAttackRange(soldier.combat.TargetBuilding))
+                return true;
+                
+            if (soldier.combat.TargetSoldier && 
+                soldier.combat.CheckIfInAttackRange(soldier.combat.TargetSoldier))
+                return true;
+        }
+        
+        return false;
+    }
+
+    private void CheckAttackOrRetryPath()
+    {
+        if (!soldier.combat.IsMovingToAttack) return;
+
+        if (soldier.combat.TargetBuilding != null)
+        {
+            float dist = Vector3.Distance(transform.position, soldier.combat.TargetBuilding.transform.position);
             if (dist <= 3f)
             {
                 SetAttack();
             }
             else
             {
-                TryAlternativePath(targetBuilding);
+                TryAlternativePath(soldier.combat.TargetBuilding);
             }
         }
-        else
+        else if (soldier.combat.TargetSoldier != null)
         {
-            if (soldier.combat.CheckIfInAttackRange(targetBuilding))
+            float dist = Vector3.Distance(transform.position, soldier.combat.TargetSoldier.transform.position);
+            if (dist <= 1.5f)
+            {
                 SetAttack();
+            }
             else
-                soldier.animator.PlayIdleAnimation();
-        }
-    }
-
-    private bool CheckAttackInterrupt()
-    {
-        return soldier.combat.IsAttacking && !soldier.combat.IsMovingToAttack &&
-               soldier.combat.TargetBuilding &&
-               soldier.combat.CheckIfInAttackRange(soldier.combat.TargetBuilding);
-    }
-
-    private void CheckAttackOrRetryPath()
-    {
-        if (!soldier.combat.IsMovingToAttack || !soldier.combat.TargetBuilding) return;
-
-        float dist = Vector3.Distance(transform.position, soldier.combat.TargetBuilding.transform.position);
-        if (dist <= 3f)
-        {
-            SetAttack();
-        }
-        else
-        {
-            TryAlternativePath(soldier.combat.TargetBuilding);
+            {
+                MoveTo(soldier.combat.TargetSoldier.transform.position);
+            }
         }
     }
 
