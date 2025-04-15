@@ -1,0 +1,85 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!687078895 &4343727234628468602
+SpriteAtlas:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: BuildingAtlas
+  m_EditorData:
+    serializedVersion: 2
+    textureSettings:
+      serializedVersion: 2
+      anisoLevel: 1
+      compressionQuality: 50
+      maxTextureSize: 2048
+      textureCompression: 0
+      filterMode: 1
+      generateMipMaps: 0
+      readable: 0
+      crunchedCompression: 0
+      sRGB: 1
+    platformSettings: []
+    packingSettings:
+      serializedVersion: 2
+      padding: 4
+      blockOffset: 1
+      allowAlphaSplitting: 0
+      enableRotation: 0
+      enableTightPacking: 0
+      enableAlphaDilation: 0
+    secondaryTextureSettings: {}
+    variantMultiplier: 1
+    packables:
+    - {fileID: 102900000, guid: 36f43638ecc1c5d41aedc372d84d78e8, type: 3}
+    - {fileID: 102900000, guid: 09e7b2ac4f826ff4196862f3f8d8a6ec, type: 3}
+    - {fileID: 102900000, guid: e7736acd78f53a44e8375b91484778a2, type: 3}
+    - {fileID: 2800000, guid: 320926f80e4d86c4a97edf7b1c78c224, type: 3}
+    - {fileID: 2800000, guid: 74cf71d7535fe1243b1eb15cc0bbe77a, type: 3}
+    - {fileID: 1411604954, guid: 71490f697853bd7418030864460f1d4b, type: 3}
+    bindAsDefault: 1
+    isAtlasV2: 0
+    cachedData: {fileID: 0}
+  m_MasterAtlas: {fileID: 0}
+  m_PackedSprites:
+  - {fileID: 21300000, guid: 32216220815d6cb4e91302672cee10a7, type: 3}
+  - {fileID: 21300000, guid: 7dab1e40f54b627499deeb0306a35c20, type: 3}
+  - {fileID: 21300000, guid: e7d7043149f70694daf9692309d06117, type: 3}
+  - {fileID: 21300000, guid: 643c62123c2cf804392022cf464b4847, type: 3}
+  - {fileID: 21300000, guid: a3ec1a5317894fc48bbcfec46acd0507, type: 3}
+  - {fileID: 21300000, guid: 882a8f24e96b30c4c9c55a29c8829853, type: 3}
+  - {fileID: 21300000, guid: 8af2bb85a17d2ce4fb859636f0487f06, type: 3}
+  - {fileID: 21300000, guid: 35c234174228c5f4aae6d792106dad32, type: 3}
+  - {fileID: 21300000, guid: 74cf71d7535fe1243b1eb15cc0bbe77a, type: 3}
+  - {fileID: 21300000, guid: c03827585564626478b449b450eb4ad2, type: 3}
+  - {fileID: 21300000, guid: 320926f80e4d86c4a97edf7b1c78c224, type: 3}
+  - {fileID: 21300000, guid: aebb0df8273a7694d97d61f2044ac7b8, type: 3}
+  - {fileID: 1411604954, guid: 71490f697853bd7418030864460f1d4b, type: 3}
+  - {fileID: 21300000, guid: 29a4315ae739a72418ac01f1f99b2dbb, type: 3}
+  - {fileID: 21300000, guid: fa52e3da758444841a56b1843b07771b, type: 3}
+  - {fileID: 21300000, guid: 37e5ffeb50335004e95094c883290718, type: 3}
+  - {fileID: 21300000, guid: cc4d68bcfd1385141bd32d746ef6c007, type: 3}
+  - {fileID: 21300000, guid: 1de6372e1374d65449fdfb168b386d7a, type: 3}
+  m_PackedSpriteNamesToIndex:
+  - Tower_Construction
+  - Tower_Blue
+  - House_Yellow
+  - House_Construction
+  - House_Purple
+  - GoldMine_Active
+  - House_Destroyed
+  - House_Red
+  - 06
+  - Tower_Yellow
+  - 09
+  - GoldMine_Destroyed
+  - Tree_0
+  - Tower_Purple
+  - House_Blue
+  - Tower_Destroyed
+  - GoldMine_Inactive
+  - Tower_Red
+  m_RenderDataMap: {}
+  m_Tag: BuildingAtlas
+  m_IsVariant: 0
