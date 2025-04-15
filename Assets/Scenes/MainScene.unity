@@ -122,52 +122,6 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &176394177
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 176394179}
-  - component: {fileID: 176394178}
-  m_Layer: 0
-  m_Name: BuildingFactory
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &176394178
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 176394177}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 20bbb1dd7164449318962eee767d2eaa, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  barracksPrefab: {fileID: 7035330969516834326, guid: 3295f59c98913496395a4dc9e3ecdd97, type: 3}
-  powerPlantPrefab: {fileID: 6965638042633538595, guid: 885fa3278bdfa4f639484bce515ca802, type: 3}
---- !u!4 &176394179
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 176394177}
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -749.7245, y: 207.4442, z: 13.780399}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1542934299}
-  m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &178863910
 GameObject:
   m_ObjectHideFlags: 0
@@ -1259,7 +1213,7 @@ RectTransform:
   - {fileID: 1793917177}
   - {fileID: 956725846}
   m_Father: {fileID: 2033921537}
-  m_RootOrder: 2
+  m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
@@ -1766,7 +1720,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1542934299}
-  m_RootOrder: 1
+  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &777110967
 GameObject:
@@ -3257,7 +3211,6 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 176394179}
   - {fileID: 652216017}
   m_Father: {fileID: 0}
   m_RootOrder: 4
@@ -3750,7 +3703,7 @@ GameObject:
   - component: {fileID: 1790740895}
   - component: {fileID: 1790740897}
   m_Layer: 5
-  m_Name: MenuRestartSound
+  m_Name: MenuRestartSoundPanel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3772,7 +3725,7 @@ RectTransform:
   - {fileID: 415490818}
   - {fileID: 1151540329}
   m_Father: {fileID: 2033921537}
-  m_RootOrder: 4
+  m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
@@ -4492,9 +4445,9 @@ RectTransform:
   m_Children:
   - {fileID: 2024869797}
   - {fileID: 1558640046}
-  - {fileID: 580674328}
-  - {fileID: 2029395508}
   - {fileID: 1790740894}
+  - {fileID: 2029395508}
+  - {fileID: 580674328}
   m_Father: {fileID: 0}
   m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}

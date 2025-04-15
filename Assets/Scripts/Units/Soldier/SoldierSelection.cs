@@ -7,7 +7,7 @@ public class SoldierSelection : MonoBehaviour
 {
     private Soldier soldier;
     private Renderer soldierRenderer;
-    private GameObject rangeIndicator;
+    public GameObject rangeIndicator;
     public bool isSelected = false;
     public LayerMask groundLayerMask;
     
