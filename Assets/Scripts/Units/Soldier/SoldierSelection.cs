@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI; 
 
 public class SoldierSelection : MonoBehaviour
 {
@@ -10,6 +11,8 @@ public class SoldierSelection : MonoBehaviour
     public GameObject rangeIndicator;
     public bool isSelected = false;
     public LayerMask groundLayerMask;
+    [SerializeField] private static RectTransform selectionBoxUI;
+    private Vector2 startMousePos;
     
     private static List<SoldierSelection> allSelectedSoldiers = new List<SoldierSelection>();
     
@@ -19,6 +22,22 @@ public class SoldierSelection : MonoBehaviour
     private static bool isDragging = false;
     private static GameObject selectionBox;
     
+private void Awake()
+{
+    if (selectionBoxUI == null)
+    {
+        GameObject found = GameObject.Find("SelectionBox");
+        if (found != null)
+        {
+            selectionBoxUI = found.GetComponent<RectTransform>();
+            selectionBoxUI.gameObject.SetActive(false);
+        }
+        else
+        {
+            Debug.LogWarning("SelectionBox UI nesnesi sahnede bulunamadı.");
+        }
+    }
+}
     private void OnEnable()
     {
         if (!allSoldiers.Contains(this))
@@ -45,57 +64,65 @@ public class SoldierSelection : MonoBehaviour
             selectionBox = CreateSelectionBox();
     }
     
-    void Update()
+   void Update()
+{
+    if (Input.GetMouseButtonDown(0) && !IsPointerOverUI())
     {
-        if (Input.GetMouseButtonDown(0) && !IsPointerOverUI())
-        {
-            dragStartPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            isDragging = true;
-            selectionBox.SetActive(true);
-        }
-        
+        startMousePos = Input.mousePosition;
+        isDragging = true;
+        selectionBoxUI.gameObject.SetActive(true);
+    }
+
+    if (isDragging)
+    {
+        Vector2 currentMousePos = Input.mousePosition;
+        UpdateSelectionBoxUI(startMousePos, currentMousePos);
+    }
+
+    if (Input.GetMouseButtonUp(0))
+    {
         if (isDragging)
         {
-            Vector2 dragCurrentPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            UpdateSelectionBox(dragStartPosition, dragCurrentPosition);
-        }
-        
-        if (Input.GetMouseButtonUp(0))
-        {
-            if (isDragging)
+            Vector2 endMousePos = Input.mousePosition;
+
+            if (Vector2.Distance(startMousePos, endMousePos) < 5f) // Küçük tıklama
             {
-                Vector2 dragEndPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-                
-                if (Vector2.Distance(dragStartPosition, dragEndPosition) < 0.1f)
+                Vector2 worldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+                RaycastHit2D hit = Physics2D.Raycast(worldPos, Vector2.zero);
+
+                if (hit.collider != null)
                 {
-                    Vector2 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-                    RaycastHit2D hit = Physics2D.Raycast(mouseWorld, Vector2.zero);
-                    
-                    if (hit.collider != null)
-                    {
-                        SoldierSelection clickedSoldier = hit.collider.GetComponent<SoldierSelection>();
-                        if (clickedSoldier == null)
-                        {
-                            if ((groundLayerMask.value & (1 << hit.collider.gameObject.layer)) != 0)
-                                DeselectAllSoldiers();
-                        }
-                    }
-                    else
-                    {
+                    SoldierSelection clickedSoldier = hit.collider.GetComponent<SoldierSelection>();
+                    if (clickedSoldier == null && (groundLayerMask.value & (1 << hit.collider.gameObject.layer)) != 0)
                         DeselectAllSoldiers();
-                    }
                 }
                 else
                 {
-                    SelectSoldiersInRectangle(dragStartPosition, dragEndPosition);
+                    DeselectAllSoldiers();
                 }
-                
-                isDragging = false;
-                selectionBox.SetActive(false);
             }
+            else
+            {
+                Vector2 worldStart = Camera.main.ScreenToWorldPoint(startMousePos);
+                Vector2 worldEnd = Camera.main.ScreenToWorldPoint(endMousePos);
+                SelectSoldiersInRectangle(worldStart, worldEnd);
+            }
+
+            isDragging = false;
+            selectionBoxUI.gameObject.SetActive(false);
         }
     }
-    
+}
+
+    private void UpdateSelectionBoxUI(Vector2 start, Vector2 end)
+{
+    Vector2 size = new Vector2(Mathf.Abs(end.x - start.x), Mathf.Abs(end.y - start.y));
+    Vector2 pos = start + (end - start) / 2f;
+
+    selectionBoxUI.position = pos;
+    selectionBoxUI.sizeDelta = size;
+}
+
     private static GameObject CreateSelectionBox()
     {
         GameObject selectionBoxObj = new GameObject("SelectionBox");

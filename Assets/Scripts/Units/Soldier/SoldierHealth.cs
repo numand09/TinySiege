@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-// Health management component
 public class SoldierHealth : MonoBehaviour
 {
     private Soldier soldier;
@@ -22,7 +21,6 @@ public class SoldierHealth : MonoBehaviour
 
     public void TakeDamage(int dmg)
     {
-        // Don't take damage while respawning
         if (isRespawning)
             return;
 
@@ -44,21 +42,42 @@ public class SoldierHealth : MonoBehaviour
     }
 
     public void Die()
-
-    {   soldier.selection.rangeIndicator.SetActive(false);  
+    { 
+        soldier.selection.rangeIndicator.SetActive(false);
+        
+        SoldierCombat combat = soldier.GetComponent<SoldierCombat>();
+        if (combat != null)
+        {
+            combat.ClearTarget();
+        }
+        
+        SoldierMovement movement = soldier.GetComponent<SoldierMovement>();
+        if (movement != null)
+        {
+            movement.StopMovement();
+        }
+        
         soldier.animator.PlayDeathAnimation();
         StartCoroutine(DeathAndDestroy());
     }
 
     private IEnumerator DeathAndDestroy()
     {
-        // Wait for animation to complete without any fade effect
-        yield return new WaitForSeconds(1.5f);
+        isRespawning = true;
+        float deathWaitTime = 2.0f;
+        if (soldier.animator.deathClip != null)
+        {
+            deathWaitTime = soldier.animator.deathClip.length + 0.5f; 
+        }
         
-        // Return to UnitPool instead of using GameObjectPool
+        yield return new WaitForSeconds(deathWaitTime);
+        
         if (UnitPool.Instance != null)
         {
             string unitId = soldier.data.unitName;
+            
+            soldier.animator.ResetState();
+            
             UnitPool.Instance.ReturnToPool(gameObject, unitId);
         }
         else
@@ -67,11 +86,9 @@ public class SoldierHealth : MonoBehaviour
         }
     }
 
-    // Call this when soldier is about to respawn
     public void StartRespawning()
     {
         isRespawning = true;
-        // Find all archers and reset their target if they're targeting this soldier
         Archer[] allArchers = FindObjectsOfType<Archer>();
         foreach (Archer archer in allArchers)
         {
@@ -79,7 +96,6 @@ public class SoldierHealth : MonoBehaviour
         }
     }
 
-    // Call this when soldier has fully respawned
     public void FinishRespawning()
     {
         isRespawning = false;

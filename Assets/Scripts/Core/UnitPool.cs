@@ -57,6 +57,11 @@ public class UnitPool : MonoBehaviour
         {
             soldier.ReInitialize();
         }
+        SoldierAnimator animator = unit.GetComponent<SoldierAnimator>();
+        if (animator != null)
+        {
+            animator.ResetState();
+        }
         
         // Any other components that need resetting
     }
@@ -75,5 +80,7 @@ public class UnitPool : MonoBehaviour
         
         // Add to the appropriate pool
         unitPools[unitId].Enqueue(unit);
+
+        
     }
 }
