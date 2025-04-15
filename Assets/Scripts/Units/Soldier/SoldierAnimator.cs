@@ -53,7 +53,6 @@ public class SoldierAnimator : MonoBehaviour
         if (animator != null && deathClip != null)
         {
             isDying = true;
-            animator.ResetTrigger("Attack");
             animator.Play(deathClip.name, 0, 0f);           
             StartCoroutine(EnsureDeathAnimation());
         }
