@@ -6,31 +6,45 @@ public class BuildingUIItem : MonoBehaviour
 {
     public Image iconImage;
     public TextMeshProUGUI nameText;
-    public TextMeshProUGUI hpText; 
+    public TextMeshProUGUI hpText;
+    public int dataIndex;
+
     private BuildingData data;
     private BaseBuilding instance;
+    private Button button;
+
+    private void Awake()
+    {
+        button = GetComponentInChildren<Button>();
+    }
 
     public void Setup(BuildingData buildingData, BaseBuilding buildingInstance)
     {
         data = buildingData;
         instance = buildingInstance;
 
+        if (data == null) return;
+
         iconImage.sprite = data.icon;
         nameText.text = data.buildingName;
+        if (hpText != null) hpText.text = "HP: " + data.maxHP;
 
-        if (hpText != null)
+        if (button == null) return;
+
+        button.onClick.RemoveAllListeners();
+        button.onClick.AddListener(() =>
         {
-            hpText.text = "HP: " + data.maxHP.ToString();
-        }
-
-        GetComponentInChildren<Button>().onClick.AddListener(() => {
-            UIEventDispatcher.Instance.BuildingItemClicked(data, buildingInstance);
+            UIEventDispatcher.Instance?.BuildingItemClicked(data, instance);
         });
+    }
+
+    private void OnDisable()
+    {
+        if (button != null) button.onClick.RemoveAllListeners();
     }
 
     private void OnDestroy()
     {
-        // For memory leak
-        GetComponentInChildren<Button>().onClick.RemoveAllListeners();
+        if (button != null) button.onClick.RemoveAllListeners();
     }
 }

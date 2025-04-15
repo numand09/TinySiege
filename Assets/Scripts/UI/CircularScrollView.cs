@@ -9,154 +9,162 @@ public class CircularScrollView : MonoBehaviour
     [SerializeField] private RectTransform contentPanel;
     [SerializeField] private BuildingDatabase buildingDatabase;
     [SerializeField] private int visibleItemCount = 10;
-    private int firstVisibleDataIndex = 0;
 
-    
+    private int firstVisibleDataIndex = 0;
     private float itemHeight;
     private int totalDataItems;
-    private List<GameObject> itemObjects = new List<GameObject>();
-    private float contentHeight;
+    private List<GameObject> itemObjects = new();
     private Vector2 originalPosition;
     private bool isInitialized = false;
-    
+    private bool isShifting = false;
+
     void Start()
     {
         GameObject sampleItem = objectPool.GetObject();
         sampleItem.SetActive(true);
         itemHeight = sampleItem.GetComponent<RectTransform>().rect.height;
         objectPool.ReturnObject(sampleItem);
-        
+
         totalDataItems = buildingDatabase.GetAllBuildings().Count;
-        
-        contentPanel.sizeDelta = new Vector2(contentPanel.sizeDelta.x, itemHeight * (visibleItemCount + 2));
-        contentHeight = contentPanel.sizeDelta.y;
-        originalPosition = contentPanel.anchoredPosition;
-        
+        contentPanel.sizeDelta = new Vector2(contentPanel.sizeDelta.x, itemHeight * 1.2f);
+        originalPosition = Vector2.zero;
+
         scrollRect.onValueChanged.AddListener(OnScroll);
-        
         InitializeItems();
-        
         isInitialized = true;
     }
-    
+
     private void InitializeItems()
-{
-    // Clear previous items
-    foreach (var item in itemObjects)
     {
-        if (item != null)
-            objectPool.ReturnObject(item);
+        foreach (var item in itemObjects)
+            if (item != null) objectPool.ReturnObject(item);
+
+        itemObjects.Clear();
+        contentPanel.anchoredPosition = originalPosition;
+        firstVisibleDataIndex = 0;
+
+        for (int i = 0; i < visibleItemCount + 2; i++)
+            CreateItemAtIndex(i);
     }
-    
-    itemObjects.Clear();
-    
-    firstVisibleDataIndex = 0;
-    
-    for (int i = 0; i < visibleItemCount + 2; i++)
+
+    private GameObject CreateItemAtIndex(int visualIndex)
     {
+        int dataIndex = (firstVisibleDataIndex + visualIndex) % totalDataItems;
         GameObject itemObj = objectPool.GetObject();
         itemObj.SetActive(true);
-        
+
         RectTransform rt = itemObj.GetComponent<RectTransform>();
         rt.SetParent(contentPanel, false);
-        rt.anchoredPosition = new Vector2(0, -i * itemHeight);
-        
-        int dataIndex = (firstVisibleDataIndex + i) % totalDataItems;
-        BuildingData building = buildingDatabase.GetAllBuildings()[dataIndex];
-        itemObj.GetComponent<BuildingUIItem>().Setup(building, null);
-        
-        itemObjects.Add(itemObj);
+        rt.anchoredPosition = new Vector2(0, -visualIndex * itemHeight);
+
+        var building = buildingDatabase.GetAllBuildings()[dataIndex];
+        var uiItem = itemObj.GetComponent<BuildingUIItem>();
+        uiItem.Setup(building, null);
+        uiItem.dataIndex = dataIndex;
+
+        if (visualIndex >= itemObjects.Count)
+            itemObjects.Add(itemObj);
+        else
+            itemObjects[visualIndex] = itemObj;
+
+        return itemObj;
     }
-}
-    
-    private void OnScroll(Vector2 normalizedPos)
+
+    private void OnScroll(Vector2 _)
     {
-        if (!isInitialized) return;
-        
+        if (!isInitialized || isShifting) return;
+
         float scrollPos = contentPanel.anchoredPosition.y;
-        
+
         if (scrollPos < 0)
         {
+            isShifting = true;
             ShiftItems(true);
-            contentPanel.anchoredPosition = new Vector2(contentPanel.anchoredPosition.x, scrollPos + itemHeight);
+            contentPanel.anchoredPosition = new Vector2(0, scrollPos + itemHeight);
+            isShifting = false;
         }
-        else if (scrollPos > itemHeight * (visibleItemCount - 2))
+        else if (scrollPos > itemHeight)
         {
+            isShifting = true;
             ShiftItems(false);
-            contentPanel.anchoredPosition = new Vector2(contentPanel.anchoredPosition.x, scrollPos - itemHeight);
+            contentPanel.anchoredPosition = new Vector2(0, scrollPos - itemHeight);
+            isShifting = false;
         }
     }
-    
 
-private void ShiftItems(bool shiftDown)
-{
-    if (shiftDown)
+    private void ShiftItems(bool shiftDown)
     {
-        firstVisibleDataIndex = (firstVisibleDataIndex - 1 + totalDataItems) % totalDataItems;
-        
-        GameObject lastItem = itemObjects[itemObjects.Count - 1];
-        itemObjects.RemoveAt(itemObjects.Count - 1);
-        itemObjects.Insert(0, lastItem);
-        
-        BuildingData building = buildingDatabase.GetAllBuildings()[firstVisibleDataIndex];
-        lastItem.GetComponent<BuildingUIItem>().Setup(building, null);
-        
-        RectTransform rt = lastItem.GetComponent<RectTransform>();
-        RectTransform firstRT = itemObjects[1].GetComponent<RectTransform>();
-        rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, firstRT.anchoredPosition.y + itemHeight);
+        if (shiftDown)
+        {
+            firstVisibleDataIndex = (firstVisibleDataIndex - 1 + totalDataItems) % totalDataItems;
+            var lastItem = itemObjects[^1];
+            itemObjects.RemoveAt(itemObjects.Count - 1);
+            itemObjects.Insert(0, lastItem);
+
+            var building = buildingDatabase.GetAllBuildings()[firstVisibleDataIndex];
+            var uiItem = lastItem.GetComponent<BuildingUIItem>();
+            uiItem.Setup(building, null);
+            uiItem.dataIndex = firstVisibleDataIndex;
+            lastItem.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, 0);
+        }
+        else
+        {
+            int lastDataIndex = (firstVisibleDataIndex + itemObjects.Count) % totalDataItems;
+            firstVisibleDataIndex = (firstVisibleDataIndex + 1) % totalDataItems;
+
+            var firstItem = itemObjects[0];
+            itemObjects.RemoveAt(0);
+            itemObjects.Add(firstItem);
+
+            var building = buildingDatabase.GetAllBuildings()[lastDataIndex];
+            var uiItem = firstItem.GetComponent<BuildingUIItem>();
+            uiItem.Setup(building, null);
+            uiItem.dataIndex = lastDataIndex;
+            firstItem.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, -(itemObjects.Count - 1) * itemHeight);
+        }
+
+        ArrangeItems();
     }
-    else
-    {
-        firstVisibleDataIndex = (firstVisibleDataIndex + 1) % totalDataItems;
-        
-        GameObject firstItem = itemObjects[0];
-        itemObjects.RemoveAt(0);
-        itemObjects.Add(firstItem);
-        
-        int lastIndex = (firstVisibleDataIndex + visibleItemCount) % totalDataItems;
-        BuildingData building = buildingDatabase.GetAllBuildings()[lastIndex];
-        firstItem.GetComponent<BuildingUIItem>().Setup(building, null);
-        
-        RectTransform rt = firstItem.GetComponent<RectTransform>();
-        RectTransform lastRT = itemObjects[itemObjects.Count - 2].GetComponent<RectTransform>();
-        rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, lastRT.anchoredPosition.y - itemHeight);
-    }
-    
-    ArrangeItems();
-}
-    
+
     private void ArrangeItems()
     {
         for (int i = 0; i < itemObjects.Count; i++)
         {
-            RectTransform rt = itemObjects[i].GetComponent<RectTransform>();
-            rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, -i * itemHeight);
+            var rt = itemObjects[i].GetComponent<RectTransform>();
+            rt.anchoredPosition = new Vector2(0, -i * itemHeight);
         }
     }
-    
-    private int GetDataIndex(int itemIndex)
-    {
-        int firstVisibleDataIndex = 0;
-        
-        for (int i = 0; i < itemObjects.Count; i++)
-        {
-            BuildingUIItem item = itemObjects[i].GetComponent<BuildingUIItem>();
-            if (item.nameText.text == buildingDatabase.GetAllBuildings()[firstVisibleDataIndex].buildingName)
-            {
-                int offset = itemIndex - i;
-                int dataIndex = (firstVisibleDataIndex + offset) % totalDataItems;
-                if (dataIndex < 0) dataIndex += totalDataItems;
-                return dataIndex;
-            }
-        }
-        
-        return itemIndex % totalDataItems;
-    }
-    
+
     public void ReloadData()
     {
         totalDataItems = buildingDatabase.GetAllBuildings().Count;
-        contentPanel.anchoredPosition = originalPosition;
         InitializeItems();
+    }
+
+    private void OnEnable()
+    {
+        if (isInitialized)
+        {
+            contentPanel.anchoredPosition = originalPosition;
+            Invoke("RefreshItems", 0.05f);
+        }
+    }
+
+    private void RefreshItems()
+    {
+        for (int i = 0; i < itemObjects.Count; i++)
+        {
+            if (itemObjects[i] == null) continue;
+
+            RectTransform rt = itemObjects[i].GetComponent<RectTransform>();
+            rt.anchoredPosition = new Vector2(0, -i * itemHeight);
+
+            int dataIndex = (firstVisibleDataIndex + i) % totalDataItems;
+            var building = buildingDatabase.GetAllBuildings()[dataIndex];
+
+            var uiItem = itemObjects[i].GetComponent<BuildingUIItem>();
+            uiItem.Setup(building, null);
+            uiItem.dataIndex = dataIndex;
+        }
     }
 }
