@@ -42,7 +42,7 @@ public class Soldier : MonoBehaviour
     
     private void Update()
     {
-        if (selection.isSelected && Input.GetMouseButtonDown(1))
+        if (selection.isSelected && Input.GetMouseButtonDown(1) && !health.isRespawning && health.currentHP > 0)
         {
             HandleTargetSelection();
         }
