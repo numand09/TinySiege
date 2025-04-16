@@ -9,9 +9,13 @@ public class SoldierMovement : MonoBehaviour
     private Pathfinder pathfinder;
     private Vector3 lastTarget = Vector3.positiveInfinity;
     private Vector3 lastPosition;
+    
     private float movementCheckTimer, stuckCheckTimer, targetTrackTimer;
     private bool isMoving = false, isRetryingPath = false;
-    private const float movementCheckDelay = 0.2f, stuckThreshold = 1f, targetOffsetRadius = 0.5f;
+    
+    private const float movementCheckDelay = 0.2f;
+    private const float stuckThreshold = 1f;
+    private const float targetOffsetRadius = 0.5f;
     private const float targetTrackDelay = 0.5f;
 
     public bool IsMoving => isMoving;
@@ -32,8 +36,11 @@ public class SoldierMovement : MonoBehaviour
         stuckCheckTimer += Time.deltaTime;
         targetTrackTimer += Time.deltaTime;
 
+        // If timer is not ready, skip movement check
         if (movementCheckTimer < movementCheckDelay) return;
         movementCheckTimer = 0f;
+        
+        // Follow soldier target
         if (soldier.combat.TargetSoldier != null && targetTrackTimer >= targetTrackDelay)
         {
             targetTrackTimer = 0f;
@@ -43,6 +50,7 @@ public class SoldierMovement : MonoBehaviour
             }
         }
 
+        // Stuck check
         if (Vector3.Distance(transform.position, lastPosition) < 0.01f)
         {
             if (stuckCheckTimer >= stuckThreshold)
@@ -63,27 +71,16 @@ public class SoldierMovement : MonoBehaviour
     public void MoveTo(Vector3 target)
     {
         bool isBuildingTarget = soldier.combat.TargetBuilding && 
-                                Vector3.Distance(target, soldier.combat.TargetBuilding.transform.position) < 1f;
-                                
+                               Vector3.Distance(target, soldier.combat.TargetBuilding.transform.position) < 1f;
+                             
         bool isSoldierTarget = soldier.combat.TargetSoldier && 
-                               Vector3.Distance(target, soldier.combat.TargetSoldier.transform.position) < 1f;
+                              Vector3.Distance(target, soldier.combat.TargetSoldier.transform.position) < 1f;
 
-        Vector3 finalTarget;
+        // Calculate final target position
+        Vector3 finalTarget = isSoldierTarget || isBuildingTarget ? 
+                             target : CalculateOffset(target, soldier.unitIndex);
         
-        if (isSoldierTarget)
-        {
-            // For soldiers, we want to get closer than with buildings
-            finalTarget = target;
-        }
-        else if (isBuildingTarget)
-        {
-            finalTarget = target;
-        }
-        else
-        {
-            finalTarget = CalculateOffset(target, soldier.unitIndex);
-        }
-        
+        // If the target is the same as the last target, skip pathfinding
         if (Vector3.Distance(finalTarget, lastTarget) < 0.1f && !isSoldierTarget) return;
 
         lastTarget = finalTarget;
@@ -92,14 +89,9 @@ public class SoldierMovement : MonoBehaviour
         if (path != null && path.Count > 0)
         {
             StopAllCoroutines();
-            if (isSoldierTarget)
-            {
-                StartCoroutine(FollowPath(path, null, soldier.combat.TargetSoldier));
-            }
-            else
-            {
-                StartCoroutine(FollowPath(path, soldier.combat.TargetBuilding));
-            }
+            StartCoroutine(FollowPath(path, 
+                             isSoldierTarget ? null : soldier.combat.TargetBuilding, 
+                             isSoldierTarget ? soldier.combat.TargetSoldier : null));
         }
         else if (isBuildingTarget)
         {
@@ -137,17 +129,19 @@ public class SoldierMovement : MonoBehaviour
             {
                 if (CheckAttackInterrupt()) yield break;
 
-                // catch the target
+                // Follow the target soldier if available
                 if (targetSoldier != null && Vector3.Distance(targetSoldier.transform.position, lastTarget) > 1.0f)
                 {
                     MoveTo(targetSoldier.transform.position);
                     yield break;
                 }
 
+                // Rotate towards the target point
                 transform.localScale = new Vector3(point.x > transform.position.x ? 1 : -1, 1, 1);
                 float speed = soldier.data.moveSpeed > 0 ? soldier.data.moveSpeed : 3f;
                 transform.position = Vector3.MoveTowards(transform.position, point, Time.deltaTime * speed);
 
+                // If the target is a BUILDING and the soldier is moving to attack
                 if (targetBuilding && soldier.combat.IsMovingToAttack)
                 {
                     float dist = Vector3.Distance(transform.position, targetBuilding.transform.position);
@@ -158,6 +152,7 @@ public class SoldierMovement : MonoBehaviour
                         yield break;
                     }
                 }
+                // If the target is a SOLDIER and the soldier is moving to attack
                 else if (targetSoldier && soldier.combat.IsMovingToAttack)
                 {
                     float dist = Vector3.Distance(transform.position, targetSoldier.transform.position);
@@ -190,21 +185,14 @@ public class SoldierMovement : MonoBehaviour
             {
                 float dist = Vector3.Distance(transform.position, targetBuilding.transform.position);
                 if (dist <= 3f)
-                {
                     SetAttack();
-                }
                 else
-                {
                     TryAlternativePath(targetBuilding);
-                }
             }
+            else if (soldier.combat.CheckIfInAttackRange(targetBuilding))
+                SetAttack();
             else
-            {
-                if (soldier.combat.CheckIfInAttackRange(targetBuilding))
-                    SetAttack();
-                else
-                    soldier.animator.PlayIdleAnimation();
-            }
+                soldier.animator.PlayIdleAnimation();
         }
         else if (targetSoldier != null)
         {
@@ -212,37 +200,26 @@ public class SoldierMovement : MonoBehaviour
             {
                 float dist = Vector3.Distance(transform.position, targetSoldier.transform.position);
                 if (dist <= soldier.combat.soldierAttackRange)
-                {
                     SetAttack();
-                }
                 else
-                {
                     MoveTo(targetSoldier.transform.position);
-                }
             }
+            else if (soldier.combat.CheckIfInAttackRange(targetSoldier))
+                SetAttack();
             else
-            {
-                if (soldier.combat.CheckIfInAttackRange(targetSoldier))
-                    SetAttack();
-                else
-                    soldier.animator.PlayIdleAnimation();
-            }
+                soldier.animator.PlayIdleAnimation();
         }
     }
 
     private bool CheckAttackInterrupt()
     {
-        //if we're attacking and not trying to move to attack
-        if (soldier.combat.IsAttacking && !soldier.combat.IsMovingToAttack)
-        {
-            if (soldier.combat.TargetBuilding && 
-                soldier.combat.CheckIfInAttackRange(soldier.combat.TargetBuilding))
-                return true;
-                
-            if (soldier.combat.TargetSoldier && 
-                soldier.combat.CheckIfInAttackRange(soldier.combat.TargetSoldier))
-                return true;
-        }
+        if (!soldier.combat.IsAttacking || soldier.combat.IsMovingToAttack) return false;
+        
+        if (soldier.combat.TargetBuilding && soldier.combat.CheckIfInAttackRange(soldier.combat.TargetBuilding))
+            return true;
+            
+        if (soldier.combat.TargetSoldier && soldier.combat.CheckIfInAttackRange(soldier.combat.TargetSoldier))
+            return true;
         
         return false;
     }
@@ -255,25 +232,17 @@ public class SoldierMovement : MonoBehaviour
         {
             float dist = Vector3.Distance(transform.position, soldier.combat.TargetBuilding.transform.position);
             if (dist <= 3f)
-            {
                 SetAttack();
-            }
             else
-            {
                 TryAlternativePath(soldier.combat.TargetBuilding);
-            }
         }
         else if (soldier.combat.TargetSoldier != null)
         {
             float dist = Vector3.Distance(transform.position, soldier.combat.TargetSoldier.transform.position);
             if (dist <= 1.5f)
-            {
                 SetAttack();
-            }
             else
-            {
                 MoveTo(soldier.combat.TargetSoldier.transform.position);
-            }
         }
     }
 
@@ -305,9 +274,12 @@ public class SoldierMovement : MonoBehaviour
 
         isRetryingPath = false;
 
+        // If no alternative path is found, check if the soldier can attack
         float dist = Vector3.Distance(transform.position, building.transform.position);
-        if (dist <= 5f) SetAttack();
-        else soldier.combat.ClearTarget();
+        if (dist <= 5f) 
+            SetAttack();
+        else 
+            soldier.combat.ClearTarget();
     }
 
     private List<Vector3> GetAlternativeTargets(BaseBuilding building)
@@ -317,6 +289,7 @@ public class SoldierMovement : MonoBehaviour
         Collider2D col = building.GetComponent<Collider2D>();
         float radius = col ? Mathf.Max(col.bounds.extents.x, col.bounds.extents.y) + 0.5f : 2f;
 
+        // Check for walkable points in a circular area around the building
         for (int i = 0; i < 16; i++)
         {
             float angle = (i / 16f) * Mathf.PI * 2;
@@ -326,6 +299,8 @@ public class SoldierMovement : MonoBehaviour
             if (boardManager.IsWalkable(point)) targets.Add(point);
         }
 
+        // If no walkable points are found, use a default circular pattern
+        // Maybe we can use can not place here.
         if (targets.Count == 0)
         {
             for (int i = 0; i < 8; i++)
@@ -342,6 +317,8 @@ public class SoldierMovement : MonoBehaviour
     private Vector3 CalculateOffset(Vector3 baseTarget, int index)
     {
         if (index == 0) return baseTarget;
+        
+        // Sunflower for random movement.
         float angle = index * 137.5f;
         float dist = Mathf.Sqrt(index) * (targetOffsetRadius / 3f);
         return baseTarget + new Vector3(Mathf.Cos(angle * Mathf.Deg2Rad), Mathf.Sin(angle * Mathf.Deg2Rad)) * dist;

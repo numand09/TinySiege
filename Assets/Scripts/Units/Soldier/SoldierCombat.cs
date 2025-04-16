@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -7,7 +6,6 @@ public class SoldierCombat : MonoBehaviour
     private Soldier soldier;
     private CapsuleCollider2D attackRangeCollider;
     public float soldierAttackRange = 0.5f;
-
     
     private BaseBuilding targetBuilding;
     private Soldier targetSoldier;
@@ -26,27 +24,24 @@ public class SoldierCombat : MonoBehaviour
     public void Initialize(Soldier soldierRef)
     {
         soldier = soldierRef;
+        
+        // Collider setup for attack range
         attackRangeCollider = GetComponent<CapsuleCollider2D>();
         attackRangeCollider.isTrigger = true;
         attackRangeCollider.size = new Vector2(0.5f, 0.4f);
         attackRangeCollider.direction = CapsuleDirection2D.Horizontal;
+        
         StartCoroutine(InitializeTargetsInRange());
     }
 
     private void Update()
     {
-        if (targetBuilding == null && targetSoldier == null) return;
+        if (!HasTarget) return;
 
         if (targetBuilding != null)
-        {
             HandleBuildingTarget();
-            return;
-        }
-
-        if (targetSoldier != null)
-        {
+        else if (targetSoldier != null)
             HandleSoldierTarget();
-        }
     }
 
     private void HandleBuildingTarget()
@@ -60,16 +55,13 @@ public class SoldierCombat : MonoBehaviour
 
         FaceTarget(targetBuilding.transform.position);
 
-        if (CheckIfInAttackRange(targetBuilding))
+        if (CheckIfInAttackRange(targetBuilding) && (isAttacking || isMovingToAttack))
         {
-            if (isAttacking || isMovingToAttack)
-            {
-                isMovingToAttack = false;
-                isAttacking = true;
-                soldier.movement.StopMovement();
-                soldier.animator.PlayAttackAnimation();
-                TryAttack();
-            }
+            isMovingToAttack = false;
+            isAttacking = true;
+            soldier.movement.StopMovement();
+            soldier.animator.PlayAttackAnimation();
+            TryAttack();
         }
         else if (isAttacking)
         {
@@ -88,16 +80,13 @@ public class SoldierCombat : MonoBehaviour
 
         FaceTarget(targetSoldier.transform.position);
 
-        if (CheckIfInAttackRange(targetSoldier))
+        if (CheckIfInAttackRange(targetSoldier) && (isAttacking || isMovingToAttack))
         {
-            if (isAttacking || isMovingToAttack)
-            {
-                isMovingToAttack = false;
-                isAttacking = true;
-                soldier.movement.StopMovement();
-                soldier.animator.PlayAttackAnimation();
-                TryAttack();
-            }
+            isMovingToAttack = false;
+            isAttacking = true;
+            soldier.movement.StopMovement();
+            soldier.animator.PlayAttackAnimation();
+            TryAttack();
         }
         else
         {
@@ -115,33 +104,29 @@ public class SoldierCombat : MonoBehaviour
             attackTimer = 0f;
             
             if (targetBuilding != null)
-            {
                 AttackBuilding(targetBuilding);
-            }
             else if (targetSoldier != null)
-            {
                 AttackSoldier(targetSoldier);
-            }
         }
     }
 
     private void FaceTarget(Vector3 targetPos)
     {
+        // Flip the sprite based on target position
         Vector3 dir = targetPos - transform.position;
         transform.localScale = new Vector3(dir.x > 0 ? 1 : -1, 1, 1);
     }
 
-    private IEnumerator InitializeTargetsInRange()
+    private System.Collections.IEnumerator InitializeTargetsInRange()
     {
+        // Wait for the collider to be set up
         yield return null;
         foreach (var col in Physics2D.OverlapCapsuleAll(transform.position, attackRangeCollider.size, attackRangeCollider.direction, 0f))
         {
-            BaseBuilding building = col.GetComponent<BaseBuilding>();
-            if (building && !buildingsInRange.Contains(building))
+            if (col.TryGetComponent<BaseBuilding>(out var building) && !buildingsInRange.Contains(building))
                 buildingsInRange.Add(building);
                 
-            Soldier enemySoldier = col.GetComponent<Soldier>();
-            if (enemySoldier && enemySoldier != soldier && !soldiersInRange.Contains(enemySoldier))
+            if (col.TryGetComponent<Soldier>(out var enemySoldier) && enemySoldier != soldier && !soldiersInRange.Contains(enemySoldier))
                 soldiersInRange.Add(enemySoldier);
         }
     }
@@ -154,12 +139,8 @@ public class SoldierCombat : MonoBehaviour
         return false;
     }
     
-    public bool CheckIfInAttackRange(Soldier target)
-    {
-        if (target == null) return false;
-        
-        return Vector3.Distance(transform.position, target.transform.position) <= soldierAttackRange;
-    }
+    public bool CheckIfInAttackRange(Soldier target) => 
+        target != null && Vector3.Distance(transform.position, target.transform.position) <= soldierAttackRange;
 
     public void SetTargetBuilding(BaseBuilding building)
     {
@@ -172,8 +153,7 @@ public class SoldierCombat : MonoBehaviour
     
     public void SetTargetSoldier(Soldier target)
     {
-        // Don't target self
-        if (target == soldier) return;
+        if (target == soldier) return; // Not allowed to target self
         
         targetSoldier = target;
         targetBuilding = null;
@@ -195,17 +175,12 @@ public class SoldierCombat : MonoBehaviour
         if (attacking)
         {
             isMovingToAttack = false;
-            if (targetBuilding) 
-                FaceTarget(targetBuilding.transform.position);
-            else if (targetSoldier)
-                FaceTarget(targetSoldier.transform.position);
+            FaceTarget(targetBuilding ? targetBuilding.transform.position : 
+                      (targetSoldier ? targetSoldier.transform.position : transform.position));
         }
     }
 
-    private void MoveTo(Vector3 targetPos)
-    {
-        soldier.movement.MoveTo(targetPos);
-    }
+    private void MoveTo(Vector3 targetPos) => soldier.movement.MoveTo(targetPos);
 
     private void AttackBuilding(BaseBuilding building)
     {
@@ -238,11 +213,10 @@ public class SoldierCombat : MonoBehaviour
         }
     }
 
-
     private void OnTriggerEnter2D(Collider2D other)
     {
-        BaseBuilding building = other.GetComponent<BaseBuilding>();
-        if (building)
+        // Building
+        if (other.TryGetComponent<BaseBuilding>(out var building))
         {
             if (!buildingsInRange.Contains(building)) buildingsInRange.Add(building);
 
@@ -255,8 +229,8 @@ public class SoldierCombat : MonoBehaviour
             }
         }
         
-        Soldier otherSoldier = other.GetComponent<Soldier>();
-        if (otherSoldier && otherSoldier != soldier)
+        // Soldier
+        if (other.TryGetComponent<Soldier>(out var otherSoldier) && otherSoldier != soldier)
         {
             if (!soldiersInRange.Contains(otherSoldier)) soldiersInRange.Add(otherSoldier);
             
@@ -272,10 +246,10 @@ public class SoldierCombat : MonoBehaviour
 
     private void OnTriggerExit2D(Collider2D other)
     {
-        BaseBuilding building = other.GetComponent<BaseBuilding>();
-        if (building) buildingsInRange.Remove(building);
+        if (other.TryGetComponent<BaseBuilding>(out var building))
+            buildingsInRange.Remove(building);
         
-        Soldier otherSoldier = other.GetComponent<Soldier>();
-        if (otherSoldier) soldiersInRange.Remove(otherSoldier);
+        if (other.TryGetComponent<Soldier>(out var otherSoldier))
+            soldiersInRange.Remove(otherSoldier);
     }
 }

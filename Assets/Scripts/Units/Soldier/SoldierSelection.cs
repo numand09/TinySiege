@@ -1,8 +1,7 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.UI; 
+using UnityEngine.UI;
 
 public class SoldierSelection : MonoBehaviour
 {
@@ -11,33 +10,29 @@ public class SoldierSelection : MonoBehaviour
     public GameObject rangeIndicator;
     public bool isSelected = false;
     public LayerMask groundLayerMask;
-    [SerializeField] private static RectTransform selectionBoxUI;
-    private Vector2 startMousePos;
+    
+    private static RectTransform selectionBoxUI;
+    private static bool isDragging = false;
+    private static Vector2 startMousePos;
     
     private static List<SoldierSelection> allSelectedSoldiers = new List<SoldierSelection>();
-    
     private static List<SoldierSelection> allSoldiers = new List<SoldierSelection>();
     
-    private static Vector2 dragStartPosition;
-    private static bool isDragging = false;
-    private static GameObject selectionBox;
-    
-private void Awake()
-{
-    if (selectionBoxUI == null)
+    public void Initialize(Soldier soldierRef, Renderer rendererRef)
     {
-        GameObject found = GameObject.Find("SelectionBox");
-        if (found != null)
-        {
-            selectionBoxUI = found.GetComponent<RectTransform>();
-            selectionBoxUI.gameObject.SetActive(false);
-        }
-        else
-        {
-            Debug.LogWarning("SelectionBox UI nesnesi sahnede bulunamadı.");
-        }
+        soldier = soldierRef;
+        soldierRenderer = rendererRef;
+        rangeIndicator = soldier.transform.Find("Range")?.gameObject;
+        
+        if (rangeIndicator != null)
+            rangeIndicator.SetActive(false);
+            
+        if (!allSoldiers.Contains(this))
+            allSoldiers.Add(this);
+            
+        InitializeSelectionBox();
     }
-}
+    
     private void OnEnable()
     {
         if (!allSoldiers.Contains(this))
@@ -51,107 +46,112 @@ private void Awake()
             allSelectedSoldiers.Remove(this);
     }
     
-    public void Initialize(Soldier soldierRef, Renderer rendererRef)
+    private void InitializeSelectionBox()
     {
-        soldier = soldierRef;
-        soldierRenderer = rendererRef;
-        rangeIndicator = soldier.transform.Find("Range")?.gameObject;
-        
-        if (rangeIndicator != null)
-            rangeIndicator.SetActive(false);
-        
-        if (selectionBox == null)
-            selectionBox = CreateSelectionBox();
-    }
-    
-   void Update()
-{
-    if (Input.GetMouseButtonDown(0) && !IsPointerOverUI())
-    {
-        startMousePos = Input.mousePosition;
-        isDragging = true;
-        selectionBoxUI.gameObject.SetActive(true);
-    }
-
-    if (isDragging)
-    {
-        Vector2 currentMousePos = Input.mousePosition;
-        UpdateSelectionBoxUI(startMousePos, currentMousePos);
-    }
-
-    if (Input.GetMouseButtonUp(0))
-    {
-        if (isDragging)
+        if (selectionBoxUI == null)
         {
-            Vector2 endMousePos = Input.mousePosition;
-
-            if (Vector2.Distance(startMousePos, endMousePos) < 5f) // Küçük tıklama
+            GameObject found = GameObject.Find("SelectionBox");
+            if (found != null)
             {
-                Vector2 worldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-                RaycastHit2D hit = Physics2D.Raycast(worldPos, Vector2.zero);
-
-                if (hit.collider != null)
-                {
-                    SoldierSelection clickedSoldier = hit.collider.GetComponent<SoldierSelection>();
-                    if (clickedSoldier == null && (groundLayerMask.value & (1 << hit.collider.gameObject.layer)) != 0)
-                        DeselectAllSoldiers();
-                }
-                else
-                {
-                    DeselectAllSoldiers();
-                }
+                selectionBoxUI = found.GetComponent<RectTransform>();
+                selectionBoxUI.gameObject.SetActive(false);
             }
             else
             {
-                Vector2 worldStart = Camera.main.ScreenToWorldPoint(startMousePos);
-                Vector2 worldEnd = Camera.main.ScreenToWorldPoint(endMousePos);
-                SelectSoldiersInRectangle(worldStart, worldEnd);
+                Debug.LogWarning("SelectionBox UI object not found in the scene.");
             }
-
-            isDragging = false;
-            selectionBoxUI.gameObject.SetActive(false);
         }
     }
-}
-
-    private void UpdateSelectionBoxUI(Vector2 start, Vector2 end)
-{
-    Vector2 size = new Vector2(Mathf.Abs(end.x - start.x), Mathf.Abs(end.y - start.y));
-    Vector2 pos = start + (end - start) / 2f;
-
-    selectionBoxUI.position = pos;
-    selectionBoxUI.sizeDelta = size;
-}
-
-    private static GameObject CreateSelectionBox()
+    
+    void Update()
     {
-        GameObject selectionBoxObj = new GameObject("SelectionBox");
-        selectionBoxObj.transform.SetParent(null);
-        
-        SpriteRenderer renderer = selectionBoxObj.AddComponent<SpriteRenderer>();
-        renderer.color = new Color(0.2f, 0.8f, 1f, 0.3f);
-        
-        Texture2D texture = new Texture2D(1, 1);
-        texture.SetPixel(0, 0, Color.white);
-        texture.Apply();
-        
-        Sprite sprite = Sprite.Create(texture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f));
-        renderer.sprite = sprite;
-        
-        selectionBoxObj.SetActive(false);
-        return selectionBoxObj;
+        HandleSelectionInput();
     }
     
-    private static void UpdateSelectionBox(Vector2 startPos, Vector2 currentPos)
+    private void HandleSelectionInput()
     {
-        Vector2 center = (startPos + currentPos) / 2f;
-        Vector2 size = new Vector2(
-            Mathf.Abs(currentPos.x - startPos.x),
-            Mathf.Abs(currentPos.y - startPos.y)
-        );
+        // Start selection box when mouse button is pressed
+        if (Input.GetMouseButtonDown(0) && !IsPointerOverUI())
+        {
+            startMousePos = Input.mousePosition;
+            isDragging = true;
+            selectionBoxUI.gameObject.SetActive(true);
+        }
+
+        // Update selection box while dragging
+        if (isDragging)
+        {
+            Vector2 currentMousePos = Input.mousePosition;
+            UpdateSelectionBoxUI(startMousePos, currentMousePos);
+        }
+
+        // Finalize selection when mouse button is released
+        if (Input.GetMouseButtonUp(0))
+        {
+            if (isDragging)
+            {
+                Vector2 endMousePos = Input.mousePosition;
+                FinalizeSelection(endMousePos);
+                
+                isDragging = false;
+                selectionBoxUI.gameObject.SetActive(false);
+            }
+        }
+    }
+    
+    private void FinalizeSelection(Vector2 endMousePos)
+    {
+        // Is it a simple click? (Point selection)
+        if (Vector2.Distance(startMousePos, endMousePos) < 5f)
+        {
+            HandlePointSelection();
+        }
+        else // Rectangle selection
+        {
+            Vector2 worldStart = Camera.main.ScreenToWorldPoint(startMousePos);
+            Vector2 worldEnd = Camera.main.ScreenToWorldPoint(endMousePos);
+            SelectSoldiersInRectangle(worldStart, worldEnd);
+        }
+    }
+    
+    private void HandlePointSelection()
+    {
+        Vector2 worldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        RaycastHit2D hit = Physics2D.Raycast(worldPos, Vector2.zero);
+
+        if (hit.collider != null)
+        {
+            SoldierSelection clickedSoldier = hit.collider.GetComponent<SoldierSelection>();
+            if (clickedSoldier != null)
+            {
+                // If Shift is not held, clear previous selections
+                if (!Input.GetKey(KeyCode.LeftShift) && !Input.GetKey(KeyCode.RightShift))
+                    DeselectAllSoldiers();
+                    
+                // Select the soldier
+                clickedSoldier.ToggleSelection();
+                return;
+            }
+            else if ((groundLayerMask.value & (1 << hit.collider.gameObject.layer)) != 0)
+            {
+                // If ground clicked, clear selection
+                DeselectAllSoldiers();
+            }
+        }
+        else
+        {
+            // If empty space clicked, clear selection
+            DeselectAllSoldiers();
+        }
+    }
+
+    private void UpdateSelectionBoxUI(Vector2 start, Vector2 end)
+    {
+        Vector2 size = new Vector2(Mathf.Abs(end.x - start.x), Mathf.Abs(end.y - start.y));
+        Vector2 pos = start + (end - start) / 2f;
         
-        selectionBox.transform.position = center;
-        selectionBox.transform.localScale = size;
+        selectionBoxUI.position = pos;
+        selectionBoxUI.sizeDelta = size;
     }
     
     private static void SelectSoldiersInRectangle(Vector2 startPos, Vector2 endPos)
@@ -179,7 +179,6 @@ private void Awake()
     {
         isSelected = !isSelected;
         
-        // Sadece Range göstergesini kullan
         if (rangeIndicator != null)
             rangeIndicator.SetActive(isSelected);
         

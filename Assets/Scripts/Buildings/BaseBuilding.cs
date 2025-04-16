@@ -70,49 +70,42 @@ public abstract class BaseBuilding : MonoBehaviour
         if (currentHP <= 0)
         {
             isDestroyed = true;
-            spriteRenderer.sprite = destructedSprite;
-            StartCoroutine(FadeAndDestroy());
+            if (spriteRenderer != null && destructedSprite != null)
+            {
+                spriteRenderer.sprite = destructedSprite;
+            }
+            StartCoroutine(WaitAndDestroy());
         }
     }
     
-    private IEnumerator FadeAndDestroy()
+    private IEnumerator WaitAndDestroy()
     {
         yield return new WaitForSeconds(2f);
-        Renderer buildingRenderer = GetComponent<Renderer>();
-        Color startColor = buildingRenderer.material.color;
-        float fadeDuration = 1f;
-        float elapsedTime = 0f;
-        while (elapsedTime < fadeDuration)
-        {
-            float alpha = Mathf.Lerp(startColor.a, 0f, elapsedTime / fadeDuration);
-            buildingRenderer.material.color = new Color(startColor.r, startColor.g, startColor.b, alpha);
-            elapsedTime += Time.deltaTime;
-            yield return null;
-        }
         FreeAreaOnBoard();
         BuildingPool.Instance.ReturnToPool(gameObject);
     }
     
-public void SetSelected(bool selected)
-{
-    isSelected = selected;
-    
-    if (selectedIndicator != null)
-        selectedIndicator.SetActive(selected);
-    
-    if (selected)
+    public void SetSelected(bool selected)
     {
-        if (uiManager != null)
-            uiManager.ShowInfoPanel(this);
+        isSelected = selected;
         
-        if (UIEventDispatcher.Instance != null && buildingData != null)
-            UIEventDispatcher.Instance.BuildingClicked(buildingData, this);
+        if (selectedIndicator != null)
+            selectedIndicator.SetActive(selected);
+        
+        if (selected)
+        {
+            if (uiManager != null)
+                uiManager.ShowInfoPanel(this);
+            
+            if (UIEventDispatcher.Instance != null && buildingData != null)
+                UIEventDispatcher.Instance.BuildingClicked(buildingData, this);
+        }
+        else if (uiManager != null)
+        {
+            uiManager.ShowInfoPanel(false);
+        }
     }
-    else if (uiManager != null)
-    {
-        uiManager.ShowInfoPanel(false);
-    }
-}
+    
     private void FreeAreaOnBoard()
     {
         if (board == null) return;
@@ -135,28 +128,16 @@ public void SetSelected(bool selected)
         }
         
         isDestroyed = true;
-        StartCoroutine(FadeOutAndReturnToPool());
+        
+        StartCoroutine(WaitBeforeReturnToPool());
     }
     
-    private IEnumerator FadeOutAndReturnToPool()
+    private IEnumerator WaitBeforeReturnToPool()
     {
-        if (spriteRenderer != null)
-        {
-            Color startColor = spriteRenderer.material.color;
-            float fadeDuration = 1f;
-            float elapsedTime = 0f;
-            
-            while (elapsedTime < fadeDuration)
-            {
-                float alpha = Mathf.Lerp(startColor.a, 0f, elapsedTime / fadeDuration);
-                spriteRenderer.material.color = new Color(startColor.r, startColor.g, startColor.b, alpha);
-                elapsedTime += Time.deltaTime;
-                yield return null;
-            }
-        }
-        
+        yield return new WaitForSeconds(1f);
         if (board != null)
-            board.FreeArea(occupiedGridPosition.x, occupiedGridPosition.y, size.x, size.y);        
+            board.FreeArea(occupiedGridPosition.x, occupiedGridPosition.y, size.x, size.y);
+            
         BuildingPool.Instance.ReturnToPool(gameObject);
     }
     
@@ -165,7 +146,6 @@ public void SetSelected(bool selected)
         isDestroyed = false;
         isBacksideMode = false; 
         
-        // Hide indicators when resetting
         if (canNotPlaceIndicator != null) 
             canNotPlaceIndicator.SetActive(false);
             
@@ -173,41 +153,15 @@ public void SetSelected(bool selected)
             selectedIndicator.SetActive(false);
         
         if (spriteRenderer != null)
-        {            
-            Color color = spriteRenderer.material.color;
-            color.a = 0;
-            spriteRenderer.material.color = color;
-            
+        {
             if (buildingData.prefab != null && buildingData.prefab.GetComponent<SpriteRenderer>() != null)
             {
                 spriteRenderer.sprite = buildingData.prefab.GetComponent<SpriteRenderer>().sprite;
             }
-            
-            StartCoroutine(FadeIn());
         }
         
         currentHP = maxHP;
         UpdateHealthBar();
         SetSelected(false);
-    }
-    
-    private IEnumerator FadeIn()
-    {
-        if (spriteRenderer != null)
-        {
-            Color targetColor = spriteRenderer.material.color;
-            targetColor.a = 1f;
-            Color currentColor = spriteRenderer.material.color;
-            float fadeDuration = 1f;
-            float elapsedTime = 0f;
-            
-            while (elapsedTime < fadeDuration)
-            {
-                float alpha = Mathf.Lerp(0f, targetColor.a, elapsedTime / fadeDuration);
-                spriteRenderer.material.color = new Color(targetColor.r, targetColor.g, targetColor.b, alpha);
-                elapsedTime += Time.deltaTime;
-                yield return null;
-            }
-        }
     }
 }

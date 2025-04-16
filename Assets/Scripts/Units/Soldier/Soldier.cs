@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class Soldier : MonoBehaviour
@@ -7,31 +6,26 @@ public class Soldier : MonoBehaviour
     public UnitData data;
     [SerializeField] private Transform healthBar;
     
-    // References to components
-    private Renderer soldierRenderer;
-    private GameBoardManager boardManager;
-    
-    // Component references
+    // Components
     [HideInInspector] public SoldierHealth health;
     [HideInInspector] public SoldierMovement movement;
     [HideInInspector] public SoldierAnimator animator;
     [HideInInspector] public SoldierCombat combat;
     [HideInInspector] public SoldierSelection selection;
     
-    private bool StartCoroutineOnEnable = false;
+    private bool startCoroutineOnEnable = false;
     public int unitIndex = 0;
-    [SerializeField] private LayerMask soldierLayerMask;
     
     private void Awake()
     {
-        soldierRenderer = GetComponentInChildren<Renderer>();
-        boardManager = FindObjectOfType<GameBoardManager>();
+        var soldierRenderer = GetComponentInChildren<Renderer>();
+        var boardManager = FindObjectOfType<GameBoardManager>();
         
-        animator = gameObject.GetComponentInChildren<SoldierAnimator>();
+        animator = GetComponentInChildren<SoldierAnimator>();
         health = gameObject.AddComponent<SoldierHealth>();
         movement = gameObject.AddComponent<SoldierMovement>();
         combat = gameObject.AddComponent<SoldierCombat>();
-        selection = gameObject.GetComponent<SoldierSelection>();
+        selection = GetComponent<SoldierSelection>();
         
         health.Initialize(this, data.hp, healthBar);
         movement.Initialize(this, boardManager);
@@ -53,40 +47,32 @@ public class Soldier : MonoBehaviour
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         RaycastHit2D hit = Physics2D.Raycast(ray.origin, ray.direction);
         
-        if (hit.collider != null)
+        if (hit.collider == null) return;
+
+        // Building
+        BaseBuilding building = hit.collider.GetComponent<BaseBuilding>();
+        if (building != null)
         {
-            BaseBuilding building = hit.collider.GetComponent<BaseBuilding>();
-            if (building != null)
-            {
-                combat.SetTargetBuilding(building);
-                return;
-            }
-            
-            Soldier targetSoldier = hit.collider.GetComponent<Soldier>();
-            if (targetSoldier != null && targetSoldier != this)
-            {
-                combat.SetTargetSoldier(targetSoldier);
-                return;
-            }
-            combat.ClearTarget();
-            movement.MoveTo(hit.point);
+            combat.SetTargetBuilding(building);
+            return;
         }
-    }
-    
-    private void OnMouseDown()
-    {
-        if (Input.GetMouseButtonDown(0))
+        
+        // Soldier
+        Soldier targetSoldier = hit.collider.GetComponent<Soldier>();
+        if (targetSoldier != null && targetSoldier != this)
         {
-            selection.ToggleSelection();
+            combat.SetTargetSoldier(targetSoldier);
+            return;
         }
+
+        // Cell
+        combat.ClearTarget();
+        movement.MoveTo(hit.point);
     }
     
     public void ReInitialize()
     {
-        if (health != null)
-        {
-            health.StartRespawning();
-        }
+        health?.StartRespawning();
         
         if (health != null && data != null)
         {
@@ -94,30 +80,10 @@ public class Soldier : MonoBehaviour
             health.UpdateHealthBar();
         }
         
-        if (combat != null)
-        {
-            combat.ClearTarget();
-        }
+        combat?.ClearTarget();
+        movement?.StopMovement();
+        selection?.Deselect();
         
-        if (movement != null)
-        {
-            movement.StopMovement();
-        }
-        
-        if (selection != null)
-        {
-            selection.Deselect();
-        }
-        
-        Renderer[] renderers = GetComponentsInChildren<Renderer>();
-        foreach (Renderer renderer in renderers)
-        {
-            if (renderer != null && renderer.material != null)
-            {
-                Color c = renderer.material.color;
-                renderer.material.color = new Color(c.r, c.g, c.b, 1f); // Full opacity
-            }
-        }
         
         if (gameObject.activeInHierarchy)
         {
@@ -125,15 +91,15 @@ public class Soldier : MonoBehaviour
         }
         else
         {
-            StartCoroutineOnEnable = true;
+            startCoroutineOnEnable = true;
         }
     }
     
     private void OnEnable()
     {
-        if (StartCoroutineOnEnable)
+        if (startCoroutineOnEnable)
         {
-            StartCoroutineOnEnable = false;
+            startCoroutineOnEnable = false;
             StartCoroutine(FinishRespawningAfterDelay(0.5f));
         }
     }
@@ -141,21 +107,15 @@ public class Soldier : MonoBehaviour
     private IEnumerator FinishRespawningAfterDelay(float delay)
     {
         yield return new WaitForSeconds(delay);
-        if (health != null)
-        {
-            health.FinishRespawning();
-        }
+        health?.FinishRespawning();
     }
     
     public bool IsBeingTargeted()
     {
-        Soldier[] allSoldiers = FindObjectsOfType<Soldier>();
-        foreach (Soldier s in allSoldiers)
+        foreach (Soldier s in FindObjectsOfType<Soldier>())
         {
             if (s != this && s.combat.TargetSoldier == this)
-            {
                 return true;
-            }
         }
         return false;
     }
