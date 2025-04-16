@@ -16,6 +16,9 @@ public abstract class BaseBuilding : MonoBehaviour
     public Transform spawnPoint;
     public Transform spawnPointBackside;
     
+    public GameObject canNotPlaceIndicator;  
+    public GameObject selectedIndicator; 
+    
     protected GameBoardManager board;
     protected SpriteRenderer spriteRenderer;
     protected bool isDestroyed = false;
@@ -31,11 +34,14 @@ public abstract class BaseBuilding : MonoBehaviour
         spriteRenderer = GetComponent<SpriteRenderer>();
         board = FindObjectOfType<GameBoardManager>();
         uiManager = FindObjectOfType<UIManager>();
-        if (spriteRenderer != null)
-        {
-            originalColor = spriteRenderer.material.color;
-        }
-    }   
+        
+        if (canNotPlaceIndicator != null)
+            canNotPlaceIndicator.SetActive(false);
+            
+        if (selectedIndicator != null)
+            selectedIndicator.SetActive(false);
+    }
+    
     public virtual void ToggleBuildingMode()
     {
         isBacksideMode = !isBacksideMode;
@@ -87,21 +93,26 @@ public abstract class BaseBuilding : MonoBehaviour
         BuildingPool.Instance.ReturnToPool(gameObject);
     }
     
-    public void SetSelected(bool selected)
+public void SetSelected(bool selected)
+{
+    isSelected = selected;
+    
+    if (selectedIndicator != null)
+        selectedIndicator.SetActive(selected);
+    
+    if (selected)
     {
-        isSelected = selected;
-        if (spriteRenderer != null)
-        {
-            spriteRenderer.material.color = isSelected ? Color.yellow : originalColor;
-            if (isSelected)
-                uiManager.ShowInfoPanel(this);
-            else
-                uiManager.ShowInfoPanel(false);
-        }
+        if (uiManager != null)
+            uiManager.ShowInfoPanel(this);
+        
+        if (UIEventDispatcher.Instance != null && buildingData != null)
+            UIEventDispatcher.Instance.BuildingClicked(buildingData, this);
     }
-    
-    public bool IsSelected => isSelected;
-    
+    else if (uiManager != null)
+    {
+        uiManager.ShowInfoPanel(false);
+    }
+}
     private void FreeAreaOnBoard()
     {
         if (board == null) return;
@@ -154,10 +165,16 @@ public abstract class BaseBuilding : MonoBehaviour
         isDestroyed = false;
         isBacksideMode = false; 
         
-        if (spriteRenderer != null)
-        {
+        // Hide indicators when resetting
+        if (canNotPlaceIndicator != null) 
+            canNotPlaceIndicator.SetActive(false);
             
-            Color color = originalColor;
+        if (selectedIndicator != null)
+            selectedIndicator.SetActive(false);
+        
+        if (spriteRenderer != null)
+        {            
+            Color color = spriteRenderer.material.color;
             color.a = 0;
             spriteRenderer.material.color = color;
             
@@ -178,7 +195,8 @@ public abstract class BaseBuilding : MonoBehaviour
     {
         if (spriteRenderer != null)
         {
-            Color targetColor = originalColor;
+            Color targetColor = spriteRenderer.material.color;
+            targetColor.a = 1f;
             Color currentColor = spriteRenderer.material.color;
             float fadeDuration = 1f;
             float elapsedTime = 0f;
@@ -190,8 +208,6 @@ public abstract class BaseBuilding : MonoBehaviour
                 elapsedTime += Time.deltaTime;
                 yield return null;
             }
-            
-            spriteRenderer.material.color = originalColor;
         }
     }
 }

@@ -13,7 +13,7 @@ public class BuildingPlacer : MonoBehaviour
     public LayerMask buildingLayerMask;
     public LayerMask soldierLayerMask;
 
-    private GameObject ghost;
+    private GameObject currentBuildingPreview;
     private BuildingData currentBuildingData;
     private GameObject placedBuilding;
     private BuildingData selectedBuilding;
@@ -35,6 +35,11 @@ public class BuildingPlacer : MonoBehaviour
 
     public void OnBuildingSelected(BuildingData data, BaseBuilding instance)
     {
+        if (data == null)
+        {
+            return;
+        }
+
         if (isPlacing && currentBuildingData != null && currentBuildingData.buildingName == data.buildingName)
         {
             CancelPlacement();
@@ -52,17 +57,42 @@ public class BuildingPlacer : MonoBehaviour
 
     public void StartPlacing(BuildingData buildingData)
     {
+        if (buildingData == null || buildingDatabase == null)
+        {
+            return;
+        }
+
         currentBuildingData = buildingDatabase.GetBuildingByName(buildingData.buildingName);
-        ghost = Instantiate(currentBuildingData.ghostPrefab);
+        
+        if (currentBuildingData == null || currentBuildingData.prefab == null)
+        {
+            return;
+        }
+        
+        currentBuildingPreview = Instantiate(currentBuildingData.prefab);
+        
+        currentBuildingPreview.layer = LayerMask.NameToLayer("Ignore Raycast");
+        
+        BaseBuilding baseBuildingScript = currentBuildingPreview.GetComponent<BaseBuilding>();
+        if (baseBuildingScript != null)
+        {
+            baseBuildingScript.Initialize();
+        }
+        else
+        {
+            Destroy(currentBuildingPreview);
+            return;
+        }
+        
         isPlacing = true;
         canPlaceCurrentBuilding = false;
     }
 
     private void CancelPlacement()
     {
-        if (ghost != null)
-            Destroy(ghost);
-        ghost = null;
+        if (currentBuildingPreview != null)
+            Destroy(currentBuildingPreview);
+        currentBuildingPreview = null;
         isPlacing = false;
         canPlaceCurrentBuilding = false;
     }
@@ -83,7 +113,7 @@ public class BuildingPlacer : MonoBehaviour
             return;
         }
 
-        if (ghost == null) return;
+        if (currentBuildingPreview == null) return;
 
         HandleBuildingPlacement(mouseWorld);
     }
@@ -129,89 +159,6 @@ public class BuildingPlacer : MonoBehaviour
         DeselectCurrentBuilding();
     }
 
-    private void HandleBuildingPlacement(Vector2 mouseWorld)
-    {
-        Vector2Int gridPos = board.WorldToGridPosition(mouseWorld);
-        Vector3 basePos = board.GridToWorldPosition(gridPos.x, gridPos.y, false);
-        ghost.transform.position = basePos;
-
-        if (currentBuildingData.prefab.GetComponent<PowerPlant>())
-            ghost.transform.position += new Vector3(POWER_PLANT_OFFSET_X, POWER_PLANT_OFFSET_Y, 0f);
-
-        var baseScript = currentBuildingData.prefab.GetComponent<BaseBuilding>();
-        canPlaceCurrentBuilding = board.IsAreaAvailable(gridPos.x, gridPos.y, baseScript.size.x, baseScript.size.y);
-        ghost.GetComponent<SpriteRenderer>().color = canPlaceCurrentBuilding ? Color.white : Color.red;
-
-        if (Input.GetMouseButtonDown(0) && canPlaceCurrentBuilding)
-        {
-            PlaceBuilding(gridPos, baseScript);
-        }
-    }
-
-    private void PlaceBuilding(Vector2Int gridPos, BaseBuilding baseScript)
-{
-    // Defensive programming
-    if (!canPlaceCurrentBuilding) return;
-    
-    Vector3 spawnPos = ghost.transform.position;
-    
-    placedBuilding = BuildingPool.Instance.GetFromPool(currentBuildingData, spawnPos, Quaternion.identity);
-
-    var placedScript = placedBuilding.GetComponent<BaseBuilding>();
-    placedScript.occupiedGridPosition = gridPos;
-    placedScript.ResetBuilding();
-    placedBuilding.layer = LayerMask.NameToLayer("Building");
-
-    EnsureBuildingHasCollider(placedBuilding);
-    board.OccupyArea(gridPos.x, gridPos.y, baseScript.size.x, baseScript.size.y);
-    
-    KillSoldiersInBuildingArea(placedScript);
-
-    Destroy(ghost);
-    ghost = null;
-    isPlacing = false;
-    canPlaceCurrentBuilding = false;
-}
-    
-    private void KillSoldiersInBuildingArea(BaseBuilding building)
-{
-    BoxCollider2D buildingCollider = building.GetComponent<BoxCollider2D>();
-    
-    if (buildingCollider != null)
-    {
-        Vector2 colliderCenter = building.transform.position + (Vector3)buildingCollider.offset;        
-        Vector2 colliderSize = buildingCollider.size;        
-        colliderSize.x *= building.transform.localScale.x;
-        colliderSize.y *= building.transform.localScale.y;
-        Collider2D[] hitColliders = Physics2D.OverlapBoxAll(colliderCenter, colliderSize, 0, soldierLayerMask);
-        
-        foreach (Collider2D collider in hitColliders)
-        {
-            SoldierHealth soldierHealth = collider.GetComponent<SoldierHealth>();
-            if (soldierHealth != null)
-            {
-                soldierHealth.Die();
-            }
-        }
-    }
-}
-
-    private void EnsureBuildingHasCollider(GameObject building)
-    {
-        if (building.GetComponent<Collider2D>() == null)
-        {
-            var newCollider = building.AddComponent<BoxCollider2D>();
-            var sr = building.GetComponent<SpriteRenderer>();
-            if (sr != null)
-                newCollider.size = sr.sprite.bounds.size;
-        }
-    }
-
-    private bool IsPointerOverUI()
-    {
-        return EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
-    }
-
     private void TrySelectBuilding(RaycastHit2D hit)
     {
         BaseBuilding building = hit.collider.GetComponent<BaseBuilding>();
@@ -220,12 +167,13 @@ public class BuildingPlacer : MonoBehaviour
             if (currentSelectedBuilding != null && currentSelectedBuilding != building)
                 currentSelectedBuilding.SetSelected(false);
 
-            building.SetSelected(true);
             currentSelectedBuilding = building;
-
-            var infoPanel = FindObjectOfType<InfoPanelController>();
-            if (infoPanel != null)
-                infoPanel.OnBuildingSelected(building.buildingData, building);
+            building.SetSelected(true);
+            
+            if (UIEventDispatcher.Instance != null && building.buildingData != null)
+            {
+                UIEventDispatcher.Instance.BuildingClicked(building.buildingData, building);
+            }
         }
     }
 
@@ -237,4 +185,116 @@ public class BuildingPlacer : MonoBehaviour
             currentSelectedBuilding = null;
         }
     }
+
+    private void HandleBuildingPlacement(Vector2 mouseWorld)
+    {
+        if (board == null || currentBuildingPreview == null)
+            return;
+
+        Vector2Int gridPos = board.WorldToGridPosition(mouseWorld);
+        Vector3 basePos = board.GridToWorldPosition(gridPos.x, gridPos.y, false);
+        currentBuildingPreview.transform.position = basePos;
+
+        if (currentBuildingData != null && currentBuildingData.prefab != null && 
+            currentBuildingData.prefab.GetComponent<PowerPlant>())
+            currentBuildingPreview.transform.position += new Vector3(POWER_PLANT_OFFSET_X, POWER_PLANT_OFFSET_Y, 0f);
+
+        var baseScript = currentBuildingPreview.GetComponent<BaseBuilding>();
+        if (baseScript != null)
+        {
+            canPlaceCurrentBuilding = board.IsAreaAvailable(gridPos.x, gridPos.y, baseScript.size.x, baseScript.size.y);
+            
+            if (baseScript.canNotPlaceIndicator != null)
+            {
+                baseScript.canNotPlaceIndicator.SetActive(!canPlaceCurrentBuilding);
+            }
+
+            if (Input.GetMouseButtonDown(0) && canPlaceCurrentBuilding)
+            {
+                PlaceBuilding(gridPos, baseScript);
+            }
+        }
     }
+
+    private void PlaceBuilding(Vector2Int gridPos, BaseBuilding baseScript)
+    {
+        if (!canPlaceCurrentBuilding || BuildingPool.Instance == null || currentBuildingData == null) 
+            return;
+        
+        Vector3 spawnPos = currentBuildingPreview.transform.position;
+        
+        placedBuilding = BuildingPool.Instance.GetFromPool(currentBuildingData, spawnPos, Quaternion.identity);
+
+        if (placedBuilding == null)
+        {
+            return;
+        }
+
+        var placedScript = placedBuilding.GetComponent<BaseBuilding>();
+        if (placedScript != null)
+        {
+            placedScript.occupiedGridPosition = gridPos;
+            placedScript.ResetBuilding();
+            placedBuilding.layer = LayerMask.NameToLayer("Building");
+
+            EnsureBuildingHasCollider(placedBuilding);
+            
+            if (board != null && baseScript != null)
+            {
+                board.OccupyArea(gridPos.x, gridPos.y, baseScript.size.x, baseScript.size.y);
+            }
+            
+            KillSoldiersInBuildingArea(placedScript);
+        }
+
+        Destroy(currentBuildingPreview);
+        currentBuildingPreview = null;
+        isPlacing = false;
+        canPlaceCurrentBuilding = false;
+    }
+    
+    private void KillSoldiersInBuildingArea(BaseBuilding building)
+    {
+        if (building == null) return;
+        
+        BoxCollider2D buildingCollider = building.GetComponent<BoxCollider2D>();
+        
+        if (buildingCollider != null)
+        {
+            Vector2 colliderCenter = building.transform.position + (Vector3)buildingCollider.offset;        
+            Vector2 colliderSize = buildingCollider.size;        
+            colliderSize.x *= building.transform.localScale.x;
+            colliderSize.y *= building.transform.localScale.y;
+            Collider2D[] hitColliders = Physics2D.OverlapBoxAll(colliderCenter, colliderSize, 0, soldierLayerMask);
+            
+            foreach (Collider2D collider in hitColliders)
+            {
+                if (collider == null) continue;
+                
+                SoldierHealth soldierHealth = collider.GetComponent<SoldierHealth>();
+                if (soldierHealth != null)
+                {
+                    soldierHealth.Die();
+                }
+            }
+        }
+    }
+
+    private void EnsureBuildingHasCollider(GameObject building)
+    {
+        if (building == null) return;
+        
+        if (building.GetComponent<Collider2D>() == null)
+        {
+            var newCollider = building.AddComponent<BoxCollider2D>();
+            var sr = building.GetComponent<SpriteRenderer>();
+            if (sr != null && sr.sprite != null)
+                newCollider.size = sr.sprite.bounds.size;
+        }
+    }
+
+    private bool IsPointerOverUI()
+    {
+        return EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+    }
+}

@@ -12,12 +12,13 @@ public class UIEventDispatcher : MonoBehaviour
     }
 
     // Events
+
     public event Action<BuildingData, BaseBuilding> OnBuildingItemClicked;
+    public event Action<BaseBuilding, bool> OnBuildingModeChanged;
     private event Action<bool> OnProductionMenuVisibilityChanged;
     private event Action<bool> OnInfoPanelVisibilityChanged;
     private event Action<bool> OnGotoMenuVisibilityChanged;
     public delegate void BuildingModeChangeHandler(BaseBuilding building, bool isBacksideMode);
-    public event BuildingModeChangeHandler OnBuildingModeChanged;
 
 
 
@@ -34,9 +35,24 @@ public class UIEventDispatcher : MonoBehaviour
         }
     }
 
-    public void BuildingItemClicked(BuildingData data, BaseBuilding instance)
+    public void BuildingClicked(BuildingData data, BaseBuilding instance)
     {
         OnBuildingItemClicked?.Invoke(data, instance);
+    }
+    
+    public void BuildingModeChanged(BaseBuilding building, bool isBacksideMode)
+    {
+        OnBuildingModeChanged?.Invoke(building, isBacksideMode);
+    }
+    
+    public void RegisterBuildingClickListener(Action<BuildingData, BaseBuilding> listener)
+    {
+        OnBuildingItemClicked += listener;
+    }
+    
+    public void UnregisterBuildingClickListener(Action<BuildingData, BaseBuilding> listener)
+    {
+        OnBuildingItemClicked -= listener;
     }
 
     public void ProductionMenuVisibilityChanged(bool isVisible)
@@ -51,16 +67,6 @@ public class UIEventDispatcher : MonoBehaviour
     public void GotoMenuVisibilityChanged(bool isVisible)
     {
         OnGotoMenuVisibilityChanged?.Invoke(isVisible);
-    }
-
-    public void RegisterBuildingClickListener(Action<BuildingData, BaseBuilding> listener)
-    {
-        OnBuildingItemClicked += listener;
-    }
-
-    public void UnregisterBuildingClickListener(Action<BuildingData, BaseBuilding> listener)
-    {
-        OnBuildingItemClicked -= listener;
     }
 
     public void RegisterProductionMenuVisibilityListener(Action<bool> listener)
@@ -82,8 +88,5 @@ public class UIEventDispatcher : MonoBehaviour
     {
         OnInfoPanelVisibilityChanged -= listener;
     }
-    public void BuildingModeChanged(BaseBuilding building, bool isBacksideMode)
-    {
-        OnBuildingModeChanged?.Invoke(building, isBacksideMode);
-    }
+
 }

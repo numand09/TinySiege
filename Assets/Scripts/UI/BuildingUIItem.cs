@@ -34,7 +34,7 @@ public class BuildingUIItem : MonoBehaviour
         button.onClick.RemoveAllListeners();
         button.onClick.AddListener(() =>
         {
-            UIEventDispatcher.Instance?.BuildingItemClicked(data, instance);
+            UIEventDispatcher.Instance?.BuildingClicked(data, instance);
         });
     }
 
