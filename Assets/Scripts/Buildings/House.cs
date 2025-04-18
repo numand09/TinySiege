@@ -1,13 +1,13 @@
 using UnityEngine;
 
-public class Castle : BaseBuilding
+public class House : BaseBuilding
 {
     protected override float HealthBarScaleFactor => 0.5f;
 
     void Start()
     {
-        buildingName = "Castle";
-        size = new Vector2Int(6, 6);
+        buildingName = "House";
+        size = new Vector2Int(4, 4);
         maxHP = 300;
         Initialize();
     }

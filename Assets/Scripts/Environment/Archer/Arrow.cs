@@ -41,7 +41,7 @@ public class Arrow : MonoBehaviour
         if (GetComponent<Collider2D>() == null)
         {
             CapsuleCollider2D col = gameObject.AddComponent<CapsuleCollider2D>();
-            col.size = new Vector2(0.5f, 0.1f);
+            col.size = new Vector2(0.1f, 0.1f);
             col.direction = CapsuleDirection2D.Horizontal;
             col.isTrigger = true;
         }

@@ -38,6 +38,7 @@ SpriteAtlas:
     - {fileID: 2800000, guid: 320926f80e4d86c4a97edf7b1c78c224, type: 3}
     - {fileID: 2800000, guid: 74cf71d7535fe1243b1eb15cc0bbe77a, type: 3}
     - {fileID: 1411604954, guid: 71490f697853bd7418030864460f1d4b, type: 3}
+    - {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
     bindAsDefault: 1
     isAtlasV2: 0
     cachedData: {fileID: 0}
@@ -45,6 +46,7 @@ SpriteAtlas:
   m_PackedSprites:
   - {fileID: 21300000, guid: 32216220815d6cb4e91302672cee10a7, type: 3}
   - {fileID: 21300000, guid: 7dab1e40f54b627499deeb0306a35c20, type: 3}
+  - {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
   - {fileID: 21300000, guid: e7d7043149f70694daf9692309d06117, type: 3}
   - {fileID: 21300000, guid: 643c62123c2cf804392022cf464b4847, type: 3}
   - {fileID: 21300000, guid: a3ec1a5317894fc48bbcfec46acd0507, type: 3}
@@ -64,6 +66,7 @@ SpriteAtlas:
   m_PackedSpriteNamesToIndex:
   - Tower_Construction
   - Tower_Blue
+  - Square
   - House_Yellow
   - House_Construction
   - House_Purple
